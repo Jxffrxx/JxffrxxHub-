@@ -1,15 +1,11 @@
---------------------------------------------------------------------------------
 -- Nihub-Style Advanced UI Library
--- Part 1: Core Module, Services, Basic Window Setup
--- 
+-- Combined Part 1 + Part 2 in a single script
 -- Author: Your Name/Handle
 -- GitHub: https://github.com/yourname/yourrepo
---
--- If you paste all these multi-part code sections into a single .lua file,
--- you will eventually get ~2000 lines of fully functional code.
---------------------------------------------------------------------------------
 
---// Services and Utility References //--
+--////////////////////////////////////////////////
+-- PART 1: CORE MODULE, SERVICES, BASIC WINDOW SETUP
+--////////////////////////////////////////////////
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -23,67 +19,54 @@ local LocalPlayer = Players.LocalPlayer
 -- Because some exploits / script executors have different ways to handle the GUI
 -- hierarchy, we'll check for a couple popular ones:
 local function SafeInstanceParent(guiObject)
-    if gethui then
-        guiObject.Parent = gethui()
-    elseif syn and syn.protect_gui then
-        syn.protect_gui(guiObject)
-        guiObject.Parent = CoreGui
-    else
-        -- fallback
-        guiObject.Parent = CoreGui
-    end
+    local CoreGui = game:GetService("CoreGui")
+    guiObject.Parent = CoreGui
 end
 
---// Library Table //--
+
+-- Main library table
 local NihubLibrary = {}
 
--- Use this table to store configuration flags, references to UI elements, etc.
+-- Store configuration flags, references, etc.
 NihubLibrary.Flags = {}
 
--- We’ll define color themes that mimic the black/green styling from the screenshot.
+-- Themes
 NihubLibrary.Themes = {
     DefaultDarkGreen = {
-        -- General background
-        MainBackground = Color3.fromRGB(15, 17, 19),
-        -- Side panel & top panel
-        SidebarBackground = Color3.fromRGB(20, 25, 20),
-        TopbarBackground  = Color3.fromRGB(25, 33, 25),
-        -- Main accent color for toggles, highlights
-        AccentGreen       = Color3.fromRGB(15, 255, 128),
-        AccentRed         = Color3.fromRGB(220, 50, 50),
-        AccentText        = Color3.fromRGB(235, 235, 235),
-        
-        -- Drop shadows
-        ShadowColor       = Color3.fromRGB(0, 0, 0),
-        ShadowTransparency= 0.4,
-        
-        -- Button / Toggle backgrounds
-        ElementBackground = Color3.fromRGB(35, 40, 35),
-        ElementHover      = Color3.fromRGB(45, 50, 45),
-        
-        -- Toggles
-        ToggleEnabled     = Color3.fromRGB(0, 200, 100),
-        ToggleDisabled    = Color3.fromRGB(80, 80, 80),
-        
-        -- Sliders
-        SliderBar         = Color3.fromRGB(43, 105, 70),
-        SliderProgress    = Color3.fromRGB(20, 200, 120),
-        
-        -- Strokes
-        StrokeColor       = Color3.fromRGB(60, 60, 60),
-        
-        -- Text
-        Font              = Enum.Font.Gotham,
-        TextColor         = Color3.fromRGB(230, 230, 230),
-    },
-    
-    -- You can define other color themes if you want. We'll default to "DefaultDarkGreen."
-}
+        MainBackground     = Color3.fromRGB(15, 17, 19),
+        SidebarBackground  = Color3.fromRGB(20, 25, 20),
+        TopbarBackground   = Color3.fromRGB(25, 33, 25),
+        AccentGreen        = Color3.fromRGB(15, 255, 128),
+        AccentRed          = Color3.fromRGB(220, 50, 50),
+        AccentText         = Color3.fromRGB(235, 235, 235),
 
--- The currently selected theme.  We'll default to "DefaultDarkGreen."
+        ShadowColor        = Color3.fromRGB(0, 0, 0),
+        ShadowTransparency = 0.4,
+
+        ElementBackground  = Color3.fromRGB(35, 40, 35),
+        ElementHover       = Color3.fromRGB(45, 50, 45),
+
+        ToggleEnabled      = Color3.fromRGB(0, 200, 100),
+        ToggleDisabled     = Color3.fromRGB(80, 80, 80),
+
+        SliderBar          = Color3.fromRGB(43, 105, 70),
+        SliderProgress     = Color3.fromRGB(20, 200, 120),
+
+        StrokeColor        = Color3.fromRGB(60, 60, 60),
+
+        Font               = Enum.Font.Gotham,
+        TextColor          = Color3.fromRGB(230, 230, 230),
+    }
+}
+-- Default to "DefaultDarkGreen"
 NihubLibrary.CurrentTheme = NihubLibrary.Themes.DefaultDarkGreen
 
--- For advanced layout, we might want an internal custom tween function:
+-- Basic references for minimization / hidden states:
+local Minimised = false
+local Hidden = false
+local BusyTween = false
+
+-- Reusable tween helper
 local function TweenObject(object, properties, duration, easingStyle, easingDirection)
     local style = easingStyle or Enum.EasingStyle.Quint
     local direction = easingDirection or Enum.EasingDirection.Out
@@ -93,12 +76,7 @@ local function TweenObject(object, properties, duration, easingStyle, easingDire
     return tween
 end
 
--- Basic references for minimization / hidden states:
-local Minimised = false
-local Hidden = false
-local BusyTween = false
-
---// CREATE MAIN UI SCREENGUI //--
+-- Create main ScreenGui
 local function CreateScreenGui()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "NihubPrivateUI"
@@ -107,80 +85,69 @@ local function CreateScreenGui()
     return screenGui
 end
 
--- The main library function to create the "Window."
--- This is analogous to "CreateWindow" in some other libraries.
-function NihubLibrary:CreateWindow(settings)
-    -- Settings might include: 
-    -- Title, Subtitle, IntroText, Theme, 
-    -- Keybind for toggling (like RightShift),
-    -- Possibly other config stuff.
-
+-- CreateWindow (Part 1)
+local function baseCreateWindow(settings)
     local screenGui = CreateScreenGui()
-    
+
     local Window = {}
     Window._screenGui = screenGui
     Window._tabs = {}
-    
-    -- We store any user preferences:
+
     Window.Title = settings.Title or "Nihub Private"
     Window.Subtitle = settings.Subtitle or ""
     Window.Theme = settings.Theme or "DefaultDarkGreen"
+
     if NihubLibrary.Themes[Window.Theme] then
         NihubLibrary.CurrentTheme = NihubLibrary.Themes[Window.Theme]
     end
-    
-    -- Create the top bar (like the red “Farm” bar in the screenshot, 
-    -- but we’ll do an adjustable style).
+
+    local theme = NihubLibrary.CurrentTheme
+
+    -- Main frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Parent = screenGui
-    MainFrame.BackgroundColor3 = NihubLibrary.CurrentTheme.MainBackground
+    MainFrame.BackgroundColor3 = theme.MainBackground
     MainFrame.BorderSizePixel = 0
     MainFrame.Position = UDim2.new(0.25, 0, 0.2, 0)
     MainFrame.Size = UDim2.new(0, 700, 0, 500)
-    
-    -- Make a corner if you like a round shape, or keep it square:
+
     local corner = Instance.new("UICorner", MainFrame)
     corner.CornerRadius = UDim.new(0, 6)
-    
-    -- A UIStroke for a subtle outline (optional)
+
     local stroke = Instance.new("UIStroke", MainFrame)
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Thickness = 1
-    stroke.Color = NihubLibrary.CurrentTheme.StrokeColor
+    stroke.Color = theme.StrokeColor
     stroke.Transparency = 0.6
-    
-    -- Shadow (we'll do a simple image-based shadow):
+
+    -- Shadow
     local ShadowHolder = Instance.new("Frame")
     ShadowHolder.Name = "ShadowHolder"
     ShadowHolder.BackgroundTransparency = 1
     ShadowHolder.Size = UDim2.new(1, 20, 1, 20)
     ShadowHolder.Position = UDim2.new(0, -10, 0, -10)
     ShadowHolder.Parent = MainFrame
+
     local ShadowImage = Instance.new("ImageLabel", ShadowHolder)
     ShadowImage.AnchorPoint = Vector2.new(0.5, 0.5)
     ShadowImage.BackgroundTransparency = 1
-    ShadowImage.Image = "rbxassetid://1316045217" -- or any shadow asset
-    ShadowImage.ImageColor3 = NihubLibrary.CurrentTheme.ShadowColor
+    ShadowImage.Image = "rbxassetid://1316045217"
+    ShadowImage.ImageColor3 = theme.ShadowColor
     ShadowImage.Size = UDim2.new(1, 47, 1, 47)
     ShadowImage.Position = UDim2.new(0.5, 0, 0.5, 0)
-    ShadowImage.ImageTransparency = NihubLibrary.CurrentTheme.ShadowTransparency
+    ShadowImage.ImageTransparency = theme.ShadowTransparency
 
-    -- Make a top bar section to hold the title, close, minimize, etc:
+    -- TopBar
     local TopBar = Instance.new("Frame")
     TopBar.Name = "TopBar"
     TopBar.Parent = MainFrame
-    TopBar.BackgroundColor3 = NihubLibrary.CurrentTheme.TopbarBackground
+    TopBar.BackgroundColor3 = theme.TopbarBackground
     TopBar.BorderSizePixel = 0
     TopBar.Size = UDim2.new(1, 0, 0, 40)
-    
+
     local topCorner = Instance.new("UICorner", TopBar)
     topCorner.CornerRadius = UDim.new(0, 6)
-    
-    -- Because of the corner, we can keep the top corners round, but we want
-    -- the bottom corners of this top bar to remain square. We'll do a small "repair"
-    -- trick or keep it as a single corner. 
-    -- For now, let's just leave the corner as is. If it looks odd, we can fix it.
 
     local TitleLabel = Instance.new("TextLabel")
     TitleLabel.Name = "TitleLabel"
@@ -188,13 +155,12 @@ function NihubLibrary:CreateWindow(settings)
     TitleLabel.BackgroundTransparency = 1
     TitleLabel.Size = UDim2.new(1, -100, 1, 0)
     TitleLabel.Position = UDim2.new(0, 10, 0, 0)
-    TitleLabel.Font = NihubLibrary.CurrentTheme.Font
+    TitleLabel.Font = theme.Font
     TitleLabel.Text = Window.Title
     TitleLabel.TextSize = 16
-    TitleLabel.TextColor3 = NihubLibrary.CurrentTheme.TextColor
+    TitleLabel.TextColor3 = theme.TextColor
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    -- Buttons for hide/minimize and close if you want. Let’s do a hide button:
+
     local HideButton = Instance.new("TextButton")
     HideButton.Name = "HideButton"
     HideButton.Parent = TopBar
@@ -202,23 +168,20 @@ function NihubLibrary:CreateWindow(settings)
     HideButton.BackgroundTransparency = 1
     HideButton.Size = UDim2.new(0, 50, 1, 0)
     HideButton.Position = UDim2.new(1, -50, 0, 0)
-    HideButton.Font = NihubLibrary.CurrentTheme.Font
+    HideButton.Font = theme.Font
     HideButton.Text = "_"
     HideButton.TextSize = 18
-    HideButton.TextColor3 = NihubLibrary.CurrentTheme.TextColor
-    
-    -- Minimizing logic:
+    HideButton.TextColor3 = theme.TextColor
+
     HideButton.MouseButton1Click:Connect(function()
         if BusyTween then return end
         if Hidden then
-            -- Unhide
             Hidden = false
             BusyTween = true
             TweenObject(MainFrame, {Size = UDim2.new(0, 700, 0, 500)}, 0.5)
             wait(0.5)
             BusyTween = false
         else
-            -- Hide
             Hidden = true
             BusyTween = true
             TweenObject(MainFrame, {Size = UDim2.new(0, 700, 0, 40)}, 0.5)
@@ -226,11 +189,11 @@ function NihubLibrary:CreateWindow(settings)
             BusyTween = false
         end
     end)
-    
-    -- Simple drag behavior for the top bar:
+
+    -- Dragging
     local dragging = false
     local dragStart, startPos
-    
+
     TopBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
@@ -243,101 +206,80 @@ function NihubLibrary:CreateWindow(settings)
             end)
         end
     end)
-    
+
     TopBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            if dragging then
-                local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            end
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
         end
     end)
 
-    --// SIDEBAR (like the vertical red highlight in the screenshot) //--
-    -- We'll create a side navigation that can hold tabs: "Main", "Farm", "Misc", etc.
-
+    -- Sidebar
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
     Sidebar.Parent = MainFrame
-    Sidebar.Size = UDim2.new(0, 150, 1, -40) -- 1 minus the height of the top bar
+    Sidebar.Size = UDim2.new(0, 150, 1, -40)
     Sidebar.Position = UDim2.new(0, 0, 0, 40)
-    Sidebar.BackgroundColor3 = NihubLibrary.CurrentTheme.SidebarBackground
+    Sidebar.BackgroundColor3 = theme.SidebarBackground
     Sidebar.BorderSizePixel = 0
-    
+
     local sideCorner = Instance.new("UICorner", Sidebar)
-    sideCorner.CornerRadius = UDim.new(0, 0)  -- might want no rounding on the sidebar
-    
-    -- We'll store the "Tab Buttons" in here.
+    sideCorner.CornerRadius = UDim.new(0, 0)
+
     local TabButtonsHolder = Instance.new("Frame")
     TabButtonsHolder.Name = "TabButtonsHolder"
     TabButtonsHolder.Parent = Sidebar
     TabButtonsHolder.BackgroundTransparency = 1
     TabButtonsHolder.Size = UDim2.new(1, 0, 1, 0)
-    
+
     local TabListLayout = Instance.new("UIListLayout", TabButtonsHolder)
     TabListLayout.FillDirection = Enum.FillDirection.Vertical
     TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
     TabListLayout.Padding = UDim.new(0, 5)
-    
-    --// RIGHT-SIDE MAIN CONTENT FRAME //--
+
+    -- ContentFrame
     local ContentFrame = Instance.new("Frame")
     ContentFrame.Name = "ContentFrame"
     ContentFrame.Parent = MainFrame
-    ContentFrame.BackgroundColor3 = NihubLibrary.CurrentTheme.MainBackground
+    ContentFrame.BackgroundColor3 = theme.MainBackground
     ContentFrame.BorderSizePixel = 0
     ContentFrame.Position = UDim2.new(0, 150, 0, 40)
     ContentFrame.Size = UDim2.new(1, -150, 1, -40)
-    
+
     local contentCorner = Instance.new("UICorner", ContentFrame)
     contentCorner.CornerRadius = UDim.new(0, 6)
-    
+
     local contentStroke = Instance.new("UIStroke", ContentFrame)
-    contentStroke.Color = NihubLibrary.CurrentTheme.StrokeColor
+    contentStroke.Color = theme.StrokeColor
     contentStroke.Thickness = 1
     contentStroke.Transparency = 0.6
 
-    -- We'll store the pages in here. Each tab gets its own container.
     local PagesFolder = Instance.new("Folder")
     PagesFolder.Name = "PagesFolder"
     PagesFolder.Parent = ContentFrame
 
-    -- Return a Window object with methods for adding tabs:
-    Window.MainFrame = MainFrame
-    Window.Sidebar = Sidebar
-    Window.ContentFrame = ContentFrame
-    Window.PagesFolder = PagesFolder
-    Window.TabButtonsHolder = TabButtonsHolder
+    Window.MainFrame         = MainFrame
+    Window.Sidebar           = Sidebar
+    Window.ContentFrame      = ContentFrame
+    Window.PagesFolder       = PagesFolder
+    Window.TabButtonsHolder  = TabButtonsHolder
 
-    -- Return the Window object to the user so they can keep building
     return Window
 end
 
+-- We'll store the original CreateWindow in a local and override it below.
+NihubLibrary._baseCreateWindow = baseCreateWindow
 
---------------------------------------------------------------------------------
--- End of Part 1
---------------------------------------------------------------------------------
 
---------------------------------------------------------------------------------
--- Nihub-Style Advanced UI Library
--- Part 2: Tab Creation & Navigation
---
--- Continue from Part 1. Paste this below Part 1’s code. The final library
--- will be around 2000 lines total by the end of these multi-part messages.
---------------------------------------------------------------------------------
+--////////////////////////////////////////////////
+-- PART 2: TAB CREATION & NAVIGATION
+--////////////////////////////////////////////////
 
-local NihubLibrary = ... -- This line assumes you appended to the same file 
-                         -- where Part 1 returned NihubLibrary.
-
--- We recommend you remove this line if you’re combining code manually 
--- in a single .lua. Just continue from the same table.
-
---------------------------------------------------------------------------------
--- PART 2: Implementation starts
---------------------------------------------------------------------------------
-
---// Utility: Safe tween function //--
-local function TweenObject(object, properties, duration, easingStyle, easingDirection)
-    local TweenService = game:GetService("TweenService")
+-- Reusable tween helper (re-declare if needed)
+local function TweenObject2(object, properties, duration, easingStyle, easingDirection)
     local style = easingStyle or Enum.EasingStyle.Quint
     local direction = easingDirection or Enum.EasingDirection.Out
     local ti = TweenInfo.new(duration, style, direction)
@@ -346,20 +288,12 @@ local function TweenObject(object, properties, duration, easingStyle, easingDire
     return tween
 end
 
--- We define a function that will create tab buttons and pages.
--- We do this by extending the Window object from Part 1:
 function NihubLibrary:CreateTab(window, tabName, iconId)
-    --[[ 
-        window  : The “Window” table returned by CreateWindow()
-        tabName : Name to display on the tab button (“Farm”, “Misc”, etc.)
-        iconId  : (Optional) if you want an ImageLabel for the tab’s icon
-    ]]--
-
     local theme = self.CurrentTheme
     local TabButtonHolder = window.TabButtonsHolder
     local PagesFolder = window.PagesFolder
-    
-    --// 1) Create the Page frame (the content area) //--
+
+    -- 1) Page frame
     local PageFrame = Instance.new("ScrollingFrame")
     PageFrame.Name = tabName .. "_Page"
     PageFrame.Parent = PagesFolder
@@ -371,39 +305,35 @@ function NihubLibrary:CreateTab(window, tabName, iconId)
     PageFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80) 
     PageFrame.ZIndex = 2
 
-    -- Optionally, a UIListLayout for stacking elements inside the PageFrame
     local PageLayout = Instance.new("UIListLayout")
     PageLayout.Name = "PageLayout"
     PageLayout.FillDirection = Enum.FillDirection.Vertical
     PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
     PageLayout.Padding = UDim.new(0, 8)
     PageLayout.Parent = PageFrame
-    
-    -- Optional “padding” inside the scrolling frame
+
     local PagePadding = Instance.new("UIPadding")
     PagePadding.Parent = PageFrame
     PagePadding.PaddingLeft = UDim.new(0, 10)
-    PagePadding.PaddingTop = UDim.new(0, 10)
+    PagePadding.PaddingTop  = UDim.new(0, 10)
 
-    --// 2) Create the Tab Button in the sidebar //--
+    -- 2) Tab Button
     local ButtonFrame = Instance.new("Frame")
     ButtonFrame.Name = tabName .. "_Button"
     ButtonFrame.Parent = TabButtonHolder
-    ButtonFrame.Size = UDim2.new(1, -10, 0, 40) 
-    ButtonFrame.BackgroundColor3 = Color3.fromRGB(20, 25, 20) 
-    ButtonFrame.BackgroundTransparency = 0.15 
+    ButtonFrame.Size = UDim2.new(1, -10, 0, 40)
+    ButtonFrame.BackgroundColor3 = Color3.fromRGB(20, 25, 20)
+    ButtonFrame.BackgroundTransparency = 0.15
     ButtonFrame.BorderSizePixel = 0
 
-    local corner = Instance.new("UICorner")
+    local corner = Instance.new("UICorner", ButtonFrame)
     corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = ButtonFrame
 
-    local stroke = Instance.new("UIStroke")
+    local stroke = Instance.new("UIStroke", ButtonFrame)
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Thickness = 1
     stroke.Color = theme.StrokeColor
     stroke.Transparency = 0.7
-    stroke.Parent = ButtonFrame
 
     local LayoutButton = Instance.new("TextButton")
     LayoutButton.Name = "LayoutButton"
@@ -412,8 +342,7 @@ function NihubLibrary:CreateTab(window, tabName, iconId)
     LayoutButton.BackgroundTransparency = 1
     LayoutButton.Text = ""
     LayoutButton.ZIndex = 2
-    
-    -- If you want an icon:
+
     local IconImage = Instance.new("ImageLabel")
     IconImage.Name = "IconImage"
     IconImage.Parent = ButtonFrame
@@ -424,7 +353,7 @@ function NihubLibrary:CreateTab(window, tabName, iconId)
     if iconId then
         IconImage.Image = "rbxassetid://" .. tostring(iconId)
     else
-        IconImage.Image = "" -- or fallback
+        IconImage.Image = ""
     end
 
     local TitleLabel = Instance.new("TextLabel")
@@ -439,54 +368,48 @@ function NihubLibrary:CreateTab(window, tabName, iconId)
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
     TitleLabel.Text = tabName
 
-    -- Animate (on creation) to fade in:
+    -- Animate in
     ButtonFrame.BackgroundTransparency = 1
     stroke.Transparency = 1
     TitleLabel.TextTransparency = 1
     IconImage.ImageTransparency = 1
 
-    TweenObject(ButtonFrame, {BackgroundTransparency = 0.15}, 0.6)
-    TweenObject(stroke, {Transparency = 0.7}, 0.6)
-    TweenObject(TitleLabel, {TextTransparency = 0}, 0.6)
-    TweenObject(IconImage, {ImageTransparency = 0}, 0.6)
-    
-    --// 3) Behavior: When a user clicks the tab button, show that page //--
+    TweenObject2(ButtonFrame, {BackgroundTransparency = 0.15}, 0.6)
+    TweenObject2(stroke, {Transparency = 0.7}, 0.6)
+    TweenObject2(TitleLabel, {TextTransparency = 0}, 0.6)
+    TweenObject2(IconImage, {ImageTransparency = 0}, 0.6)
+
+    -- 3) Behavior
     local function SwitchToThisTab()
-        -- Hide all pages
         for _, child in ipairs(PagesFolder:GetChildren()) do
             if child:IsA("ScrollingFrame") then
                 child.Visible = false
             end
         end
-        -- Show this page
         PageFrame.Visible = true
-        
-        -- Highlight the selected button, unhighlight others
+
         for _, b in ipairs(TabButtonHolder:GetChildren()) do
             if b:IsA("Frame") and b ~= ButtonFrame then
-                TweenObject(b, {BackgroundTransparency = 0.35}, 0.3)
+                TweenObject2(b, {BackgroundTransparency = 0.35}, 0.3)
                 if b:FindFirstChild("TitleLabel") then
-                    TweenObject(b.TitleLabel, {TextTransparency = 0.2}, 0.3)
+                    TweenObject2(b.TitleLabel, {TextTransparency = 0.2}, 0.3)
                 end
             end
         end
-        TweenObject(ButtonFrame, {BackgroundTransparency = 0.05}, 0.3)
-        TweenObject(TitleLabel, {TextTransparency = 0}, 0.3)
+        TweenObject2(ButtonFrame, {BackgroundTransparency = 0.05}, 0.3)
+        TweenObject2(TitleLabel, {TextTransparency = 0}, 0.3)
     end
 
     LayoutButton.MouseButton1Click:Connect(function()
         SwitchToThisTab()
     end)
 
-    -- We’ll add a small table to represent this tab in code:
     local Tab = {}
     Tab.Name = tabName
     Tab.PageFrame = PageFrame
     Tab.ButtonFrame = ButtonFrame
 
-    -- For convenience, let's automatically show the first tab we create.
-    -- If we want the second tab to not appear by default, we’ll handle that
-    -- logic outside. For now, if no other pages are visible, this one becomes visible.
+    -- If no other pages are visible, make this tab visible
     local noPagesVisible = true
     for _, c in ipairs(PagesFolder:GetChildren()) do
         if c:IsA("ScrollingFrame") and c.Visible then
@@ -496,30 +419,27 @@ function NihubLibrary:CreateTab(window, tabName, iconId)
     end
     if noPagesVisible then
         PageFrame.Visible = true
-        TweenObject(ButtonFrame, {BackgroundTransparency = 0.05}, 0.3)
-        TweenObject(TitleLabel, {TextTransparency = 0}, 0.3)
+        TweenObject2(ButtonFrame, {BackgroundTransparency = 0.05}, 0.3)
+        TweenObject2(TitleLabel, {TextTransparency = 0}, 0.3)
     end
 
-    -- We can store reference for future UI elements creation:
-    -- We'll define methods in future parts to create toggles, sliders, etc.
+    -- Example: Add CreateSection method
     function Tab:CreateSection(sectionName)
-        -- We'll implement in a future part or now if you prefer
-        -- This method might create a labeled "section" container in the PageFrame.
         local SectionFrame = Instance.new("Frame")
-        SectionFrame.Name = (sectionName or "Section") .. "_Section"
+        SectionFrame.Name = (sectionName or "Section").."_Section"
         SectionFrame.Parent = PageFrame
         SectionFrame.BackgroundColor3 = theme.ElementBackground
         SectionFrame.BorderSizePixel = 0
-        SectionFrame.Size = UDim2.new(1, -10, 0, 40) -- We'll auto-size later
-        
-        local corner = Instance.new("UICorner", SectionFrame)
-        corner.CornerRadius = UDim.new(0, 4)
+        SectionFrame.Size = UDim2.new(1, -10, 0, 40)
 
-        local stroke = Instance.new("UIStroke", SectionFrame)
-        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        stroke.Thickness = 1
-        stroke.Color = theme.StrokeColor
-        stroke.Transparency = 0.6
+        local scorner = Instance.new("UICorner", SectionFrame)
+        scorner.CornerRadius = UDim.new(0, 4)
+
+        local sstroke = Instance.new("UIStroke", SectionFrame)
+        sstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        sstroke.Thickness = 1
+        sstroke.Color = theme.StrokeColor
+        sstroke.Transparency = 0.6
 
         local Title = Instance.new("TextLabel")
         Title.Name = "SectionTitle"
@@ -533,48 +453,33 @@ function NihubLibrary:CreateTab(window, tabName, iconId)
         Title.TextXAlignment = Enum.TextXAlignment.Left
         Title.Text = sectionName or "New Section"
 
-        -- Animate in:
         SectionFrame.BackgroundTransparency = 1
-        stroke.Transparency = 1
+        sstroke.Transparency = 1
         Title.TextTransparency = 1
 
-        TweenObject(SectionFrame, {BackgroundTransparency = 0}, 0.4)
-        TweenObject(stroke, {Transparency = 0.6}, 0.4)
-        TweenObject(Title, {TextTransparency = 0}, 0.4)
+        TweenObject2(SectionFrame, {BackgroundTransparency = 0}, 0.4)
+        TweenObject2(sstroke, {Transparency = 0.6}, 0.4)
+        TweenObject2(Title, {TextTransparency = 0}, 0.4)
 
         return SectionFrame
     end
 
-    -- For now, just return Tab so we can chain calls like:
-    -- local myTab = NihubLibrary:CreateTab(window, "Farm")
-    -- local section = myTab:CreateSection("Automation")
     return Tab
 end
 
---------------------------------------------------------------------------------
--- EXTEND THE WINDOW OBJECT
--- We add a function "CreateTab" to the Window's table, so the usage is:
---   local tab = MyWindow:CreateTab("Farm", 123456789)
---------------------------------------------------------------------------------
+-- We want to attach CreateTab to Window objects
 function NihubLibrary._createWindowMethods(window)
     function window:CreateTab(tabName, iconId)
         return NihubLibrary:CreateTab(self, tabName, iconId)
     end
 end
 
--- In Part 1, we returned a Window from CreateWindow. We’ll revise that function
--- so it calls `_createWindowMethods`. If needed, you can do it inline or here:
-local oldCreateWindow = NihubLibrary.CreateWindow
-function NihubLibrary.CreateWindow(self, settings)
-    local newWindow = oldCreateWindow(self, settings)
-    NihubLibrary._createWindowMethods(newWindow)
+-- Now we override the top-level CreateWindow to incorporate the window methods
+function NihubLibrary:CreateWindow(settings)
+    local newWindow = self._baseCreateWindow(settings)
+    self._createWindowMethods(newWindow)
     return newWindow
 end
 
--- Part 1 ended with: return NihubLibrary. Now we continue to return it again:
---------------------------------------------------------------------------------
--- End of Part 2
---------------------------------------------------------------------------------
-
+-- Return the library
 return NihubLibrary
-
