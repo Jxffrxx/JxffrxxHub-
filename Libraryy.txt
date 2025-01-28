@@ -1,149 +1,119 @@
-local Players=game:GetService("Players")
-local RunService=game:GetService("RunService")
-local UserInputService=game:GetService("UserInputService")
-local TweenService=game:GetService("TweenService")
-local HttpService=game:GetService("HttpService")
-local CoreGui=game:GetService("CoreGui")
+local gs=game.GetService
+local Players=gs(game,"Players")
+local RunService=gs(game,"RunService")
+local UserInputService=gs(game,"UserInputService")
+local TweenService=gs(game,"TweenService")
+local HttpService=gs(game,"HttpService")
+local CoreGui=gs(game,"CoreGui")
 local LocalPlayer=Players.LocalPlayer or Players:GetPlayers()[1]
-local function SafeParent(o)o.Parent=CoreGui end
-local function TweenObj(o,p,d,s,di)s=s or Enum.EasingStyle.Quint di=di or Enum.EasingDirection.Out local ti=TweenInfo.new(d,s,di)local tw=TweenService:Create(o,ti,p)tw:Play()return tw end
-local Hidden=false
-local Minimizing=false
-local NihubLarge={}
-NihubLarge.Flags={}
-NihubLarge.Config={Enabled=false,FileName="NihubLargeConfig.json"}
-NihubLarge.ToggleKey=Enum.KeyCode.RightShift
-NihubLarge.Themes={}
-NihubLarge.CurrentTheme=nil
-NihubLarge.Themes.DefaultDarkGreen={
-MainBackground=Color3.fromRGB(15,17,19),
-Topbar=Color3.fromRGB(25,33,25),
-Sidebar=Color3.fromRGB(20,25,20),
-Content=Color3.fromRGB(25,30,25),
+local function SafeParent(g)g.Parent=CoreGui end
+local function WeightedDrag(frame,dragframe,weight)local dg=false local stp local stpo dragframe.InputBegan:Connect(function(i)if i.UserInputType==Enum.UserInputType.MouseButton1 then dg=true stp=i.Position stpo=frame.Position i.Changed:Connect(function()if i.UserInputState==Enum.UserInputState.End then dg=false end end)end end)dragframe.InputChanged:Connect(function(i)if dg and i.UserInputType==Enum.UserInputType.MouseMovement then local dl=i.Position-stp frame.Position=UDim2.new(stpo.X.Scale,stpo.X.Offset+dl.X*(weight or 0.8),stpo.Y.Scale,stpo.Y.Offset+dl.Y*(weight or 0.8))end end)end
+local function MakeTween(o,props,dur,sty,dir)sty=sty or Enum.EasingStyle.Quint dir=dir or Enum.EasingDirection.Out local twinfo=TweenInfo.new(dur,sty,dir)local tw=TweenService:Create(o,twinfo,props)tw:Play()return tw end
+local HiddenUI=false
+local MinimizingUI=false
+local Busy=false
+local function CreateShadow(par,th)local sh=Instance.new("Frame")sh.Name="ShadowHolder"sh.BackgroundTransparency=1 sh.Size=UDim2.new(1,20,1,20)sh.Position=UDim2.new(0,-10,0,-10)sh.Parent=par local sim=Instance.new("ImageLabel",sh)sim.Name="ShadowImage"sim.AnchorPoint=Vector2.new(0.5,0.5)sim.Position=UDim2.new(0.5,0,0.5,0)sim.Size=UDim2.new(1,47,1,47)sim.BackgroundTransparency=1 sim.Image="rbxassetid://1316045217"sim.ImageColor3=th.ShadowColor sim.ImageTransparency=th.ShadowTransparency end
+local BigUI={}
+BigUI.Flags={}
+BigUI.Config={Enabled=false,FileName="NihubSaved.json"}
+BigUI.ToggleKey=Enum.KeyCode.RightShift
+BigUI.Themes={}
+BigUI.Themes.DefaultDarkGreen={
+MainBG=Color3.fromRGB(15,17,19),
+TopbarBG=Color3.fromRGB(25,33,25),
+SidebarBG=Color3.fromRGB(20,25,20),
+ContentBG=Color3.fromRGB(25,30,25),
 AccentRed=Color3.fromRGB(220,50,50),
 AccentGreen=Color3.fromRGB(15,255,128),
 AccentText=Color3.fromRGB(235,235,235),
 ShadowColor=Color3.fromRGB(0,0,0),
 ShadowTransparency=0.4,
-ElementBackground=Color3.fromRGB(35,40,35),
+ElementBG=Color3.fromRGB(35,40,35),
 ElementHover=Color3.fromRGB(45,50,45),
-ToggleEnabled=Color3.fromRGB(0,200,100),
-ToggleDisabled=Color3.fromRGB(80,80,80),
+ToggleOn=Color3.fromRGB(0,200,100),
+ToggleOff=Color3.fromRGB(80,80,80),
 SliderBar=Color3.fromRGB(43,105,70),
-SliderProgress=Color3.fromRGB(20,200,120),
-DropdownBackground=Color3.fromRGB(35,40,35),
+SliderFill=Color3.fromRGB(20,200,120),
+DropdownBG=Color3.fromRGB(35,40,35),
 DropdownHover=Color3.fromRGB(45,50,45),
-StrokeColor=Color3.fromRGB(60,60,60),
+Stroke=Color3.fromRGB(60,60,60),
 Font=Enum.Font.Gotham,
-TextColor=Color3.fromRGB(230,230,230)
+TextCol=Color3.fromRGB(230,230,230)
 }
-NihubLarge.Themes.LimeGreen={
-MainBackground=Color3.fromRGB(40,60,40),
-Topbar=Color3.fromRGB(50,80,50),
-Sidebar=Color3.fromRGB(35,50,35),
-Content=Color3.fromRGB(40,60,40),
+BigUI.Themes.LimeGreen={
+MainBG=Color3.fromRGB(40,60,40),
+TopbarBG=Color3.fromRGB(50,80,50),
+SidebarBG=Color3.fromRGB(35,50,35),
+ContentBG=Color3.fromRGB(40,60,40),
 AccentRed=Color3.fromRGB(255,80,80),
 AccentGreen=Color3.fromRGB(80,255,80),
 AccentText=Color3.fromRGB(250,250,250),
 ShadowColor=Color3.fromRGB(0,0,0),
 ShadowTransparency=0.3,
-ElementBackground=Color3.fromRGB(60,80,60),
+ElementBG=Color3.fromRGB(60,80,60),
 ElementHover=Color3.fromRGB(70,90,70),
-ToggleEnabled=Color3.fromRGB(0,255,0),
-ToggleDisabled=Color3.fromRGB(100,100,100),
+ToggleOn=Color3.fromRGB(0,255,0),
+ToggleOff=Color3.fromRGB(100,100,100),
 SliderBar=Color3.fromRGB(60,100,60),
-SliderProgress=Color3.fromRGB(80,255,80),
-DropdownBackground=Color3.fromRGB(60,80,60),
+SliderFill=Color3.fromRGB(80,255,80),
+DropdownBG=Color3.fromRGB(60,80,60),
 DropdownHover=Color3.fromRGB(70,90,70),
-StrokeColor=Color3.fromRGB(80,80,80),
+Stroke=Color3.fromRGB(80,80,80),
 Font=Enum.Font.Gotham,
-TextColor=Color3.fromRGB(235,235,235)
+TextCol=Color3.fromRGB(235,235,235)
 }
-NihubLarge.CurrentTheme=NihubLarge.Themes.DefaultDarkGreen
-local function MakeShadow(p,th)
-local sh=Instance.new("Frame")
-sh.Name="ShadowHolder"
-sh.BackgroundTransparency=1
-sh.Size=UDim2.new(1,20,1,20)
-sh.Position=UDim2.new(0,-10,0,-10)
-sh.Parent=p
-local simg=Instance.new("ImageLabel")
-simg.Name="ShadowImage"
-simg.AnchorPoint=Vector2.new(0.5,0.5)
-simg.Position=UDim2.new(0.5,0,0.5,0)
-simg.Size=UDim2.new(1,47,1,47)
-simg.BackgroundTransparency=1
-simg.Image="rbxassetid://1316045217"
-simg.ImageColor3=th.ShadowColor
-simg.ImageTransparency=th.ShadowTransparency
-simg.Parent=sh
-end
-local function MakeGui()
-local sg=Instance.new("ScreenGui")
-sg.Name="NihubPrivateUI_V3"
-sg.ZIndexBehavior=Enum.ZIndexBehavior.Global
-SafeParent(sg)
-return sg
-end
+BigUI.CurrentTheme=BigUI.Themes.DefaultDarkGreen
+local function MakeScreenGui()local sg=Instance.new("ScreenGui")sg.Name="NihubV3"sg.ZIndexBehavior=Enum.ZIndexBehavior.Global SafeParent(sg)return sg end
 local BaseWin={}
-function BaseWin.new(opts)
-local w=setmetatable({}, {__index=BaseWin})
-local sg=MakeGui()
+function BaseWin.new(settings)
+local w=setmetatable({},{__index=BaseWin})
+local sg=MakeScreenGui()
 w.Gui=sg
-w.Title=opts.Title or "Nihub Private"
-w.Subtitle=opts.Subtitle or ""
-local t=opts.Theme or "DefaultDarkGreen"
-if NihubLarge.Themes[t]then NihubLarge.CurrentTheme=NihubLarge.Themes[t]end
-w.Theme=NihubLarge.CurrentTheme
-if opts.ConfigSaving then
-NihubLarge.Config.Enabled=opts.ConfigSaving.Enabled or false
-NihubLarge.Config.FileName=opts.ConfigSaving.FileName or "NihubLargeConfig.json"
+w.Title=settings.Title or "Nihub Private"
+w.Subtitle=settings.Subtitle or ""
+local tk=settings.Theme or "DefaultDarkGreen"
+if BigUI.Themes[tk]then BigUI.CurrentTheme=BigUI.Themes[tk]end
+w.Theme=BigUI.CurrentTheme
+if settings.ConfigSaving then
+BigUI.Config.Enabled=settings.ConfigSaving.Enabled or false
+BigUI.Config.FileName=settings.ConfigSaving.FileName or "NihubSaved.json"
 else
-NihubLarge.Config.Enabled=false
+BigUI.Config.Enabled=false
 end
-local Main=Instance.new("Frame")
+local Main=Instance.new("Frame",sg)
 Main.Name="MainFrame"
 Main.Size=UDim2.new(0,900,0,550)
 Main.Position=UDim2.new(0.5,-450,0.5,-275)
-Main.BackgroundColor3=w.Theme.MainBackground
+Main.BackgroundColor3=w.Theme.MainBG
 Main.BorderSizePixel=0
-Main.Parent=sg
-local c=Instance.new("UICorner",Main)
-c.CornerRadius=UDim.new(0,8)
-local s=Instance.new("UIStroke",Main)
-s.Thickness=1
-s.Color=w.Theme.StrokeColor
-s.Transparency=0.6
-MakeShadow(Main,w.Theme)
-local Top=Instance.new("Frame")
+local mc=Instance.new("UICorner",Main)mc.CornerRadius=UDim.new(0,6)
+local ms=Instance.new("UIStroke",Main)ms.Thickness=1 ms.Color=w.Theme.Stroke ms.Transparency=0.6
+CreateShadow(Main,w.Theme)
+local Top=Instance.new("Frame",Main)
 Top.Name="Topbar"
 Top.Size=UDim2.new(1,0,0,45)
-Top.BackgroundColor3=w.Theme.Topbar
+Top.BackgroundColor3=w.Theme.TopbarBG
 Top.BorderSizePixel=0
-Top.Parent=Main
-local tc=Instance.new("UICorner",Top)
-tc.CornerRadius=UDim.new(0,8)
-local TitleLabel=Instance.new("TextLabel")
-TitleLabel.Name="WindowTitle"
+local topc=Instance.new("UICorner",Top)topc.CornerRadius=UDim.new(0,6)
+local TitleLabel=Instance.new("TextLabel",Top)
+TitleLabel.Name="Title"
 TitleLabel.Text=w.Title
 TitleLabel.Font=w.Theme.Font
 TitleLabel.TextSize=16
-TitleLabel.TextColor3=w.Theme.TextColor
+TitleLabel.TextColor3=w.Theme.TextCol
 TitleLabel.BackgroundTransparency=1
 TitleLabel.Size=UDim2.new(1,-45,1,0)
 TitleLabel.Position=UDim2.new(0,10,0,0)
 TitleLabel.TextXAlignment=Enum.TextXAlignment.Left
-TitleLabel.Parent=Top
-local Min=Instance.new("TextButton")
-Min.Name="MinimizeBtn"
-Min.Text="-"
-Min.Font=w.Theme.Font
-Min.TextSize=20
-Min.TextColor3=w.Theme.TextColor
-Min.BackgroundTransparency=1
-Min.Size=UDim2.new(0,35,1,0)
-Min.Position=UDim2.new(1,-35,0,0)
-Min.Parent=Top
+local MinimizeBtn=Instance.new("TextButton",Top)
+MinimizeBtn.Name="Minimize"
+MinimizeBtn.Text="-"
+MinimizeBtn.Font=w.Theme.Font
+MinimizeBtn.TextSize=20
+MinimizeBtn.TextColor3=w.Theme.TextCol
+MinimizeBtn.BackgroundTransparency=1
+MinimizeBtn.Size=UDim2.new(0,35,1,0)
+MinimizeBtn.Position=UDim2.new(1,-35,0,0)
 local dragging=false
 local dragStart
 local startPos
@@ -152,725 +122,1213 @@ if i.UserInputType==Enum.UserInputType.MouseButton1 then
 dragging=true
 dragStart=i.Position
 startPos=Main.Position
-i.Changed:Connect(function()
-if i.UserInputState==Enum.UserInputState.End then
-dragging=false
-end
-end)
+i.Changed:Connect(function()if i.UserInputState==Enum.UserInputState.End then dragging=false end end)
 end
 end)
 Top.InputChanged:Connect(function(i)
 if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then
-local diff=i.Position - dragStart
-Main.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+diff.X,startPos.Y.Scale,startPos.Y.Offset+diff.Y)
+local delta=i.Position-dragStart
+Main.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
 end
 end)
-Min.MouseButton1Click:Connect(function()
-if Minimizing then return end
-Minimizing=true
-if Hidden then
-Hidden=false
-TweenObj(Main,{Size=UDim2.new(0,900,0,550)},0.4)
+MinimizeBtn.MouseButton1Click:Connect(function()
+if Busy then return end
+Busy=true
+if HiddenUI then
+HiddenUI=false
+MakeTween(Main,{Size=UDim2.new(0,900,0,550)},0.4)
 wait(0.4)
 else
-Hidden=true
-TweenObj(Main,{Size=UDim2.new(0,900,0,45)},0.4)
+HiddenUI=true
+MakeTween(Main,{Size=UDim2.new(0,900,0,45)},0.4)
 wait(0.4)
 end
-Minimizing=false
+Busy=false
 end)
-local Side=Instance.new("Frame")
+local Side=Instance.new("Frame",Main)
 Side.Name="Sidebar"
 Side.Size=UDim2.new(0,180,1,-45)
 Side.Position=UDim2.new(0,0,0,45)
-Side.BackgroundColor3=w.Theme.Sidebar
+Side.BackgroundColor3=w.Theme.SidebarBG
 Side.BorderSizePixel=0
-Side.Parent=Main
-local sL=Instance.new("UIListLayout",Side)
-sL.Padding=UDim.new(0,5)
-local Con=Instance.new("Frame")
-Con.Name="ContentFrame"
-Con.Position=UDim2.new(0,180,0,45)
-Con.Size=UDim2.new(1,-180,1,-45)
-Con.BackgroundColor3=w.Theme.Content
-Con.BorderSizePixel=0
-Con.Parent=Main
-local cc=Instance.new("UICorner",Con)
-cc.CornerRadius=UDim.new(0,8)
-local cs=Instance.new("UIStroke",Con)
-cs.Thickness=1
-cs.Color=w.Theme.StrokeColor
-cs.Transparency=0.6
-local pg=Instance.new("Folder",Con)
-pg.Name="PagesFolder"
-local SearchBar=Instance.new("TextBox")
+local sideLay=Instance.new("UIListLayout",Side)sideLay.Padding=UDim.new(0,5)
+local Cont=Instance.new("Frame",Main)
+Cont.Name="ContentFrame"
+Cont.Position=UDim2.new(0,180,0,45)
+Cont.Size=UDim2.new(1,-180,1,-45)
+Cont.BackgroundColor3=w.Theme.ContentBG
+Cont.BorderSizePixel=0
+local ccorn=Instance.new("UICorner",Cont)ccorn.CornerRadius=UDim.new(0,6)
+local cstr=Instance.new("UIStroke",Cont)cstr.Thickness=1 cstr.Color=w.Theme.Stroke cstr.Transparency=0.6
+local Pages=Instance.new("Folder",Cont)
+Pages.Name="PagesFolder"
+local SearchBar=Instance.new("TextBox",Cont)
 SearchBar.Name="SearchBar"
 SearchBar.PlaceholderText="Search UI..."
 SearchBar.Font=w.Theme.Font
 SearchBar.TextSize=14
-SearchBar.TextColor3=w.Theme.TextColor
-SearchBar.BackgroundColor3=w.Theme.ElementBackground
+SearchBar.TextColor3=w.Theme.TextCol
+SearchBar.BackgroundColor3=w.Theme.ElementBG
 SearchBar.Size=UDim2.new(0,180,0,30)
 SearchBar.Position=UDim2.new(1,-190,0,5)
 SearchBar.Text=""
 SearchBar.BorderSizePixel=0
-SearchBar.Parent=Con
-local scorn=Instance.new("UICorner",SearchBar)
-scorn.CornerRadius=UDim.new(0,6)
-local sstroke=Instance.new("UIStroke",SearchBar)
-sstroke.Thickness=1
-sstroke.Color=w.Theme.StrokeColor
-sstroke.Transparency=0.6
-local wobj={}
-wobj.MainFrame=Main
-wobj.Topbar=Top
-wobj.Sidebar=Side
-wobj.ContentFrame=Con
-wobj.PagesFolder=pg
-wobj.SearchBox=SearchBar
-setmetatable(wobj,{__index=w})
-return wobj
+local sc=Instance.new("UICorner",SearchBar)sc.CornerRadius=UDim.new(0,6)
+local scs=Instance.new("UIStroke",SearchBar)scs.Thickness=1 scs.Color=w.Theme.Stroke scs.Transparency=0.6
+w.MainFrame=Main
+w.Sidebar=Side
+w.ContentFrame=Cont
+w.PagesFolder=Pages
+w.SearchBar=SearchBar
+return w
 end
-NihubLarge.BaseWin=BaseWin
-function NihubLarge:CreateWindow(opts)
-local neww=self.BaseWin.new(opts)
-setmetatable(neww,{__index=self})
-return neww
+local function MakeNotificationsGui()
+local ng=Instance.new("ScreenGui")ng.Name="NihubNotifications"SafeParent(ng)return ng end
+BigUI.NotifGui=nil
+function BigUI:Notify(tbl)
+if not self.NotifGui then
+self.NotifGui=MakeNotificationsGui()
+local cont=Instance.new("Frame",self.NotifGui)
+cont.Name="Container"
+cont.BackgroundTransparency=1
+cont.Size=UDim2.new(1,0,1,0)
 end
-function NihubLarge:ApplyTheme(t)
-self.CurrentTheme=t
+local c=self.NotifGui:FindFirstChild("Container")
+local th=self.CurrentTheme
+local dur=tbl.Duration or 5
+local nf=Instance.new("Frame",c)
+nf.Name="Notification"
+nf.BackgroundColor3=th.ElementBG
+nf.BorderSizePixel=0
+nf.Size=UDim2.new(0,300,0,80)
+nf.Position=UDim2.new(1,310,1,-100)
+local cr=Instance.new("UICorner",nf)cr.CornerRadius=UDim.new(0,6)
+local st=Instance.new("UIStroke",nf)st.Thickness=1 st.Color=th.Stroke st.Transparency=0.4
+local ttl=Instance.new("TextLabel",nf)
+ttl.Name="NTitle"
+ttl.Text=tbl.Title or "Notification"
+ttl.Font=th.Font
+ttl.TextSize=16
+ttl.TextColor3=th.TextCol
+ttl.BackgroundTransparency=1
+ttl.Size=UDim2.new(1,-10,0,20)
+ttl.Position=UDim2.new(0,10,0,5)
+ttl.TextXAlignment=Enum.TextXAlignment.Left
+local bd=Instance.new("TextLabel",nf)
+bd.Name="NBody"
+bd.Text=tbl.Text or "Notification..."
+bd.Font=th.Font
+bd.TextSize=14
+bd.TextColor3=th.TextCol
+bd.BackgroundTransparency=1
+bd.Size=UDim2.new(1,-20,0,40)
+bd.Position=UDim2.new(0,10,0,25)
+bd.TextWrapped=true
+bd.TextXAlignment=Enum.TextXAlignment.Left
+nf.BackgroundTransparency=1
+ttl.TextTransparency=1
+bd.TextTransparency=1
+nf.Position=UDim2.new(1,310,1,-100)
+MakeTween(nf,{Position=UDim2.new(1,-310,1,-100),BackgroundTransparency=0},0.4)
+MakeTween(ttl,{TextTransparency=0},0.6)
+MakeTween(bd,{TextTransparency=0},0.6)
+spawn(function()
+wait(dur)
+MakeTween(nf,{Position=UDim2.new(1,310,1,-100),BackgroundTransparency=1},0.4)
+MakeTween(ttl,{TextTransparency=1},0.3)
+MakeTween(bd,{TextTransparency=1},0.3)
+wait(0.4)
+nf:Destroy()
+end)
 end
-function NihubLarge:SaveConfig()
+function BigUI:SaveConfig()
 if not self.Config.Enabled then return end
-local data={}
-for k,v in pairs(self.Flags)do data[k]=v end
-local enc=HttpService:JSONEncode(data)
-writefile(self.Config.FileName,enc)
+local dt={}
+for k,v in pairs(self.Flags)do
+dt[k]=v
 end
-function NihubLarge:LoadConfig()
+local e=HttpService:JSONEncode(dt)
+writefile(self.Config.FileName,e)
+end
+function BigUI:LoadConfig()
 if not self.Config.Enabled then return end
 if isfile(self.Config.FileName)then
 local raw=readfile(self.Config.FileName)
 local ok,dec=pcall(function()return HttpService:JSONDecode(raw)end)
-if ok and dec then for k,v in pairs(dec)do self.Flags[k]=v end end
+if ok and dec then
+for k,v in pairs(dec)do
+self.Flags[k]=v
 end
 end
-function NihubLarge:CreateTab(w,name,icon)
-local th=w.Theme
-local sb=w.Sidebar
-local pf=w.PagesFolder
-local tb=Instance.new("TextButton")
-tb.Name=name.."_Tab"
-tb.BackgroundColor3=th.Sidebar
-tb.BorderSizePixel=0
-tb.Size=UDim2.new(1,0,0,40)
-tb.Text=""
-tb.Parent=sb
-local corner=Instance.new("UICorner",tb)
-corner.CornerRadius=UDim.new(0,6)
-local stroke=Instance.new("UIStroke",tb)
-stroke.Color=th.StrokeColor
-stroke.Transparency=0.7
-local Icon=Instance.new("ImageLabel")
-Icon.Name="TabIcon"
+end
+end
+function BigUI:ApplyTheme(th)
+self.CurrentTheme=th
+end
+local oldNew=BaseWin.new
+function BigUI:CreateWindow(opts)
+local w=oldNew(opts)
+setmetatable(w,{__index=self})
+return w
+end
+-- PART 2 (Lines ~601–1200)
+
+local function CreateTabInternal(win,tabName,iconID)
+local th=win.Theme
+local sb=win.Sidebar
+local pf=win.PagesFolder
+local TabBtn=Instance.new("TextButton",sb)
+TabBtn.Name=tabName.."_Tab"
+TabBtn.Text=""
+TabBtn.BackgroundColor3=th.SidebarBG
+TabBtn.BorderSizePixel=0
+TabBtn.Size=UDim2.new(1,0,0,40)
+local tbCorner=Instance.new("UICorner",TabBtn)
+tbCorner.CornerRadius=UDim.new(0,6)
+local tbStroke=Instance.new("UIStroke",TabBtn)
+tbStroke.Color=th.Stroke
+tbStroke.Transparency=0.7
+local Icon=Instance.new("ImageLabel",TabBtn)
+Icon.Name="Icon"
 Icon.BackgroundTransparency=1
 Icon.Position=UDim2.new(0,8,0.5,-10)
 Icon.Size=UDim2.new(0,20,0,20)
-if icon then Icon.Image="rbxassetid://"..tostring(icon)else Icon.Image=""end
-Icon.ImageColor3=th.TextColor
-Icon.Parent=tb
-local Title=Instance.new("TextLabel")
-Title.Name="TabTitle"
+if iconID then
+Icon.Image="rbxassetid://"..tostring(iconID)
+else
+Icon.Image=""
+end
+Icon.ImageColor3=th.TextCol
+local Title=Instance.new("TextLabel",TabBtn)
+Title.Name="Title"
 Title.BackgroundTransparency=1
 Title.Position=UDim2.new(0,35,0,0)
 Title.Size=UDim2.new(1,-35,1,0)
-Title.Text=name
+Title.Text=tabName
 Title.Font=th.Font
 Title.TextSize=14
-Title.TextColor3=th.TextColor
+Title.TextColor3=th.TextCol
 Title.TextXAlignment=Enum.TextXAlignment.Left
-Title.Parent=tb
-local Page=Instance.new("Frame")
-Page.Name=name.."_Page"
+TabBtn.BackgroundTransparency=1
+tbStroke.Transparency=1
+Title.TextTransparency=1
+Icon.ImageTransparency=1
+MakeTween(TabBtn,{BackgroundTransparency=0.35},0.7)
+MakeTween(tbStroke,{Transparency=0.7},0.7)
+MakeTween(Title,{TextTransparency=0.2},0.7)
+MakeTween(Icon,{ImageTransparency=0.2},0.7)
+local Page=Instance.new("Frame",pf)
+Page.Name=tabName.."_Page"
 Page.Size=UDim2.new(1,0,1,0)
 Page.BackgroundTransparency=1
 Page.Visible=false
-Page.Parent=pf
-local Container=Instance.new("Frame")
-Container.Name="ColumnsContainer"
+local Container=Instance.new("Frame",Page)
+Container.Name="MultiColumnContainer"
 Container.Size=UDim2.new(1,0,1,0)
-Container.BackgroundColor3=th.Content
-Container.BackgroundTransparency=0
+Container.BackgroundColor3=th.ContentBG
 Container.BorderSizePixel=0
-Container.Parent=Page
-local cLayout=Instance.new("UIListLayout",Container)
-cLayout.FillDirection=Enum.FillDirection.Horizontal
-cLayout.SortOrder=Enum.SortOrder.LayoutOrder
-cLayout.Padding=UDim.new(0,10)
-local Left=Instance.new("ScrollingFrame")
-Left.Name="LeftColumn"
-Left.Size=UDim2.new(0.5,-5,1,0)
-Left.BorderSizePixel=0
-Left.ScrollBarThickness=5
-Left.BackgroundTransparency=1
-Left.Parent=Container
-local lLay=Instance.new("UIListLayout",Left)
-lLay.SortOrder=Enum.SortOrder.LayoutOrder
-lLay.Padding=UDim.new(0,8)
-local lPad=Instance.new("UIPadding",Left)
-lPad.PaddingLeft=UDim.new(0,8)
-lPad.PaddingTop=UDim.new(0,8)
-local Right=Instance.new("ScrollingFrame")
-Right.Name="RightColumn"
-Right.Size=UDim2.new(0.5,-5,1,0)
-Right.BorderSizePixel=0
-Right.ScrollBarThickness=5
-Right.BackgroundTransparency=1
-Right.Parent=Container
-local rLay=Instance.new("UIListLayout",Right)
-rLay.SortOrder=Enum.SortOrder.LayoutOrder
-rLay.Padding=UDim.new(0,8)
-local rPad=Instance.new("UIPadding",Right)
-rPad.PaddingLeft=UDim.new(0,8)
-rPad.PaddingTop=UDim.new(0,8)
-local function ShowTab()
-for _,child in ipairs(pf:GetChildren()) do if child:IsA("Frame")then child.Visible=false end end
+local containerLayout=Instance.new("UIListLayout",Container)
+containerLayout.FillDirection=Enum.FillDirection.Horizontal
+containerLayout.SortOrder=Enum.SortOrder.LayoutOrder
+containerLayout.Padding=UDim.new(0,10)
+local LeftCol=Instance.new("ScrollingFrame",Container)
+LeftCol.Name="LeftColumn"
+LeftCol.Size=UDim2.new(0.5,-5,1,0)
+LeftCol.BorderSizePixel=0
+LeftCol.ScrollBarThickness=5
+LeftCol.BackgroundTransparency=1
+local leftLay=Instance.new("UIListLayout",LeftCol)
+leftLay.SortOrder=Enum.SortOrder.LayoutOrder
+leftLay.Padding=UDim.new(0,8)
+local leftPad=Instance.new("UIPadding",LeftCol)
+leftPad.PaddingLeft=UDim.new(0,8)
+leftPad.PaddingTop=UDim.new(0,8)
+local RightCol=Instance.new("ScrollingFrame",Container)
+RightCol.Name="RightColumn"
+RightCol.Size=UDim2.new(0.5,-5,1,0)
+RightCol.BorderSizePixel=0
+RightCol.ScrollBarThickness=5
+RightCol.BackgroundTransparency=1
+local rightLay=Instance.new("UIListLayout",RightCol)
+rightLay.SortOrder=Enum.SortOrder.LayoutOrder
+rightLay.Padding=UDim.new(0,8)
+local rightPad=Instance.new("UIPadding",RightCol)
+rightPad.PaddingLeft=UDim.new(0,8)
+rightPad.PaddingTop=UDim.new(0,8)
+local function ShowThisTab()
+for _,pg in ipairs(pf:GetChildren())do
+if pg:IsA("Frame")then
+pg.Visible=false
+end
+end
 Page.Visible=true
-for _,btn in ipairs(sb:GetChildren())do
-if btn:IsA("TextButton")and btn~=tb then TweenObj(btn,{BackgroundColor3=th.Sidebar},0.3)end
+for _,b in ipairs(sb:GetChildren())do
+if b:IsA("TextButton")and b~=TabBtn then
+MakeTween(b,{BackgroundTransparency=0.35},0.3)
+if b:FindFirstChild("Title")then
+MakeTween(b.Title,{TextTransparency=0.2},0.3)
 end
-TweenObj(tb,{BackgroundColor3=th.AccentRed},0.3)
+if b:FindFirstChild("Icon")then
+MakeTween(b.Icon,{ImageTransparency=0.4},0.3)
 end
-tb.MouseButton1Click:Connect(ShowTab)
-local foundActive=false
-for _,p in ipairs(pf:GetChildren()) do
-if p:IsA("Frame")and p.Visible then foundActive=true break end
 end
-if not foundActive then
+end
+MakeTween(TabBtn,{BackgroundTransparency=0},0.3)
+MakeTween(Title,{TextTransparency=0},0.3)
+MakeTween(Icon,{ImageTransparency=0},0.3)
+end
+TabBtn.MouseButton1Click:Connect(ShowThisTab)
+local noVis=true
+for _,c in ipairs(pf:GetChildren())do
+if c:IsA("Frame")and c.Visible then noVis=false break end
+end
+if noVis then
 Page.Visible=true
-tb.BackgroundColor3=th.AccentRed
+MakeTween(TabBtn,{BackgroundTransparency=0},0.3)
+MakeTween(Title,{TextTransparency=0},0.3)
+MakeTween(Icon,{ImageTransparency=0},0.3)
 end
-local TObj={}
-TObj.Name=name
-TObj.Page=Page
-TObj.LeftColumn=Left
-TObj.RightColumn=Right
-function TObj:CreateSection(col,ti)
-local cFrame
-if col:lower()=="left"then cFrame=Left else cFrame=Right end
-local s=Instance.new("Frame")
-s.Name=(ti or "Section").."_Section"
-s.BackgroundColor3=th.ElementBackground
-s.BorderSizePixel=0
-s.Size=UDim2.new(1,-16,0,40)
-s.AutomaticSize=Enum.AutomaticSize.Y
-s.Parent=cFrame
-local sc=Instance.new("UICorner",s)
-sc.CornerRadius=UDim.new(0,6)
-local ss=Instance.new("UIStroke",s)
-ss.Color=th.StrokeColor
-ss.Thickness=1
-ss.Transparency=0.4
-local tLab=Instance.new("TextLabel")
-tLab.Name="SectionTitle"
-tLab.Text=ti or "Section"
-tLab.Font=th.Font
-tLab.TextSize=15
-tLab.TextColor3=th.TextColor
-tLab.TextXAlignment=Enum.TextXAlignment.Left
-tLab.BackgroundTransparency=1
-tLab.Size=UDim2.new(1,-10,0,30)
-tLab.Position=UDim2.new(0,8,0,0)
-tLab.Parent=s
-local sLay=Instance.new("UIListLayout",s)
-sLay.FillDirection=Enum.FillDirection.Vertical
-sLay.SortOrder=Enum.SortOrder.LayoutOrder
-sLay.Padding=UDim.new(0,6)
-local sPad=Instance.new("UIPadding",s)
-sPad.PaddingTop=UDim.new(0,30)
-local ret={}
-ret.Frame=s
-return ret
+local TabObj={}
+TabObj.Name=tabName
+TabObj.PageFrame=Page
+TabObj.LeftColumn=LeftCol
+TabObj.RightColumn=RightCol
+function TabObj:CreateSection(col,title)
+local target
+if col:lower()=="left"then
+target=LeftCol
+else
+target=RightCol
 end
-return TObj
+local sec=Instance.new("Frame",target)
+sec.Name=(title or "Section").."_Sec"
+sec.BackgroundColor3=th.ElementBG
+sec.BorderSizePixel=0
+sec.Size=UDim2.new(1,-16,0,40)
+sec.AutomaticSize=Enum.AutomaticSize.Y
+local scorn=Instance.new("UICorner",sec)
+scorn.CornerRadius=UDim.new(0,6)
+local sstr=Instance.new("UIStroke",sec)
+sstr.Color=th.Stroke
+sstr.Thickness=1
+sstr.Transparency=0.4
+local sttl=Instance.new("TextLabel",sec)
+sttl.Name="SectionTitle"
+sttl.Text=title or "Section"
+sttl.Font=th.Font
+sttl.TextSize=15
+sttl.TextColor3=th.TextCol
+sttl.TextXAlignment=Enum.TextXAlignment.Left
+sttl.BackgroundTransparency=1
+sttl.Size=UDim2.new(1,-10,0,30)
+sttl.Position=UDim2.new(0,8,0,0)
+local lay=Instance.new("UIListLayout",sec)
+lay.FillDirection=Enum.FillDirection.Vertical
+lay.SortOrder=Enum.SortOrder.LayoutOrder
+lay.Padding=UDim.new(0,6)
+local pad=Instance.new("UIPadding",sec)
+pad.PaddingTop=UDim.new(0,30)
+sec.BackgroundTransparency=1
+sstr.Transparency=1
+sttl.TextTransparency=1
+MakeTween(sec,{BackgroundTransparency=0},0.7)
+MakeTween(sstr,{Transparency=0.4},0.7)
+MakeTween(sttl,{TextTransparency=0},0.7)
+local SectionMethods={}
+SectionMethods.Frame=sec
+return SectionMethods
 end
-function BaseWin:CreateTab(n,i)
-return NihubLarge:CreateTab(self,n,i)
+return TabObj
 end
-NihubLarge.Elements={}
-function NihubLarge.Elements.CreateToggle(parent,info)
-local th=NihubLarge.CurrentTheme
-local f=Instance.new("Frame")
-f.Name=(info.Name or "Toggle").."_Element"
-f.BackgroundColor3=th.ElementBackground
-f.BorderSizePixel=0
-f.Size=UDim2.new(1,-8,0,40)
-f.Parent=parent
-local cn=Instance.new("UICorner",f)
-cn.CornerRadius=UDim.new(0,6)
-local st=Instance.new("UIStroke",f)
-st.Color=th.StrokeColor
-st.Thickness=1
-st.Transparency=0.5
-local tl=Instance.new("TextLabel")
-tl.Name="ToggleTitle"
-tl.Text=info.Name or "Toggle"
-tl.Font=th.Font
-tl.TextSize=14
-tl.TextColor3=th.TextColor
-tl.TextXAlignment=Enum.TextXAlignment.Left
-tl.BackgroundTransparency=1
-tl.Size=UDim2.new(1,-60,1,0)
-tl.Position=UDim2.new(0,8,0,0)
-tl.Parent=f
-local sw=Instance.new("Frame")
+local function PatchWindowMethods(w)
+function w:CreateTab(n,i)
+return CreateTabInternal(w,n,i)
+end
+end
+PatchWindowMethods(BaseWin)
+local oldWin=BigUI.CreateWindow
+function BigUI.CreateWindow(self,opts)
+local nw=oldWin(self,opts)
+PatchWindowMethods(nw)
+return nw
+end
+local function SectionComponentsFactory()
+local Module={}
+function Module.CreateToggle(parent,info)
+local th=BigUI.CurrentTheme
+local tFrame=Instance.new("Frame",parent)
+tFrame.Name=(info.Name or "Toggle").."_Toggle"
+tFrame.BackgroundColor3=th.ElementBG
+tFrame.BorderSizePixel=0
+tFrame.Size=UDim2.new(1,-8,0,40)
+local corner=Instance.new("UICorner",tFrame)
+corner.CornerRadius=UDim.new(0,6)
+local stroke=Instance.new("UIStroke",tFrame)
+stroke.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+stroke.Thickness=1
+stroke.Color=th.Stroke
+stroke.Transparency=0.5
+local tTitle=Instance.new("TextLabel",tFrame)
+tTitle.Name="Title"
+tTitle.BackgroundTransparency=1
+tTitle.Font=th.Font
+tTitle.TextSize=14
+tTitle.TextColor3=th.TextCol
+tTitle.Text=info.Name or "Toggle"
+tTitle.TextXAlignment=Enum.TextXAlignment.Left
+tTitle.Size=UDim2.new(1,-60,1,0)
+tTitle.Position=UDim2.new(0,8,0,0)
+local sw=Instance.new("Frame",tFrame)
 sw.Name="Switch"
 sw.AnchorPoint=Vector2.new(1,0.5)
 sw.Position=UDim2.new(1,-10,0.5,0)
 sw.Size=UDim2.new(0,50,0,22)
-sw.BackgroundColor3=th.ToggleDisabled
-sw.Parent=f
-local sc=Instance.new("UICorner",sw)
-sc.CornerRadius=UDim.new(0,11)
-local kb=Instance.new("Frame")
-kb.Name="Knob"
-kb.Size=UDim2.new(0,18,0,18)
-kb.Position=UDim2.new(0,2,0,2)
-kb.BackgroundColor3=Color3.fromRGB(220,220,220)
-kb.Parent=sw
-local kbc=Instance.new("UICorner",kb)
-kbc.CornerRadius=UDim.new(0,9)
-local val=info.Default or false
-local function UpdateToggle(v)
-val=v
-if val then
-TweenObj(sw,{BackgroundColor3=th.ToggleEnabled},0.2)
-TweenObj(kb,{Position=UDim2.new(1,-20,0,2)},0.2)
+sw.BackgroundColor3=th.ToggleOff
+local sCorn=Instance.new("UICorner",sw)
+sCorn.CornerRadius=UDim.new(0,11)
+local sws=Instance.new("UIStroke",sw)
+sws.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+sws.Thickness=2
+sws.Color=Color3.fromRGB(50,50,50)
+sws.Transparency=0.3
+local knob=Instance.new("Frame",sw)
+knob.Name="Knob"
+knob.Size=UDim2.new(0,18,0,18)
+knob.Position=UDim2.new(0,2,0,2)
+knob.BackgroundColor3=Color3.fromRGB(200,200,200)
+local kCorn=Instance.new("UICorner",knob)
+kCorn.CornerRadius=UDim.new(0,9)
+local On=info.Default or false
+local function SetToggle(st)
+On=st
+if st then
+MakeTween(sw,{BackgroundColor3=th.ToggleOn},0.2)
+MakeTween(knob,{Position=UDim2.new(1,-20,0,2)},0.2)
 else
-TweenObj(sw,{BackgroundColor3=th.ToggleDisabled},0.2)
-TweenObj(kb,{Position=UDim2.new(0,2,0,2)},0.2)
+MakeTween(sw,{BackgroundColor3=th.ToggleOff},0.2)
+MakeTween(knob,{Position=UDim2.new(0,2,0,2)},0.2)
 end
-if info.Callback then info.Callback(val)end
+if info.Callback then info.Callback(On)end
 end
-local clk=Instance.new("TextButton")
-clk.Name="ToggleClick"
-clk.Text=""
+local clk=Instance.new("TextButton",tFrame)
+clk.Name="Click"
 clk.BackgroundTransparency=1
 clk.Size=UDim2.new(1,0,1,0)
-clk.Parent=f
-clk.MouseButton1Click:Connect(function()UpdateToggle(not val)end)
-UpdateToggle(val)
-local ret={}
-function ret:Set(v)UpdateToggle(v)end
-return ret
+clk.Text=""
+clk.MouseButton1Click:Connect(function()
+SetToggle(not On)
+end)
+SetToggle(On)
+tFrame.BackgroundTransparency=1
+stroke.Transparency=1
+tTitle.TextTransparency=1
+MakeTween(tFrame,{BackgroundTransparency=0},0.7)
+MakeTween(stroke,{Transparency=0.5},0.7)
+MakeTween(tTitle,{TextTransparency=0},0.7)
+local TogObj={}
+function TogObj:Set(v)
+SetToggle(v)
 end
-function NihubLarge.Elements.CreateSlider(parent,info)
-local th=NihubLarge.CurrentTheme
-local sf=Instance.new("Frame")
-sf.Name=(info.Name or "Slider").."_Element"
-sf.BackgroundColor3=th.ElementBackground
+function TogObj:Get()
+return On
+end
+return TogObj
+end
+function Module.CreateSlider(parent,info)
+local th=BigUI.CurrentTheme
+local sf=Instance.new("Frame",parent)
+sf.Name=(info.Name or "Slider").."_Slider"
+sf.BackgroundColor3=th.ElementBG
 sf.BorderSizePixel=0
 sf.Size=UDim2.new(1,-8,0,60)
-sf.Parent=parent
-local c=Instance.new("UICorner",sf)
-c.CornerRadius=UDim.new(0,6)
-local s=Instance.new("UIStroke",sf)
-s.Color=th.StrokeColor
-s.Thickness=1
-s.Transparency=0.5
-local tl=Instance.new("TextLabel")
-tl.Name="SliderTitle"
-tl.Text=info.Name or "Slider"
-tl.Font=th.Font
-tl.TextSize=14
-tl.TextColor3=th.TextColor
-tl.TextXAlignment=Enum.TextXAlignment.Left
-tl.BackgroundTransparency=1
-tl.Size=UDim2.new(1,-10,0,20)
-tl.Position=UDim2.new(0,8,0,5)
-tl.Parent=sf
-local vl=Instance.new("TextLabel")
-vl.Name="SliderValue"
-vl.BackgroundTransparency=1
-vl.Font=th.Font
-vl.TextSize=14
-vl.TextColor3=th.TextColor
-vl.TextXAlignment=Enum.TextXAlignment.Right
-vl.Size=UDim2.new(1,-10,0,20)
-vl.Position=UDim2.new(0,8,0,5)
-vl.Parent=sf
-local bar=Instance.new("Frame")
-bar.Name="SliderBar"
+local corn=Instance.new("UICorner",sf)
+corn.CornerRadius=UDim.new(0,6)
+local str=Instance.new("UIStroke",sf)
+str.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+str.Thickness=1
+str.Color=th.Stroke
+str.Transparency=0.5
+local tTitle=Instance.new("TextLabel",sf)
+tTitle.Name="SliderTitle"
+tTitle.BackgroundTransparency=1
+tTitle.Font=th.Font
+tTitle.TextSize=14
+tTitle.TextColor3=th.TextCol
+tTitle.Text=info.Name or "Slider"
+tTitle.TextXAlignment=Enum.TextXAlignment.Left
+tTitle.Size=UDim2.new(1,-10,0,20)
+tTitle.Position=UDim2.new(0,8,0,5)
+local valLbl=Instance.new("TextLabel",sf)
+valLbl.Name="SliderValue"
+valLbl.BackgroundTransparency=1
+valLbl.Font=th.Font
+valLbl.TextSize=14
+valLbl.TextColor3=th.TextCol
+valLbl.TextXAlignment=Enum.TextXAlignment.Right
+valLbl.Size=UDim2.new(1,-10,0,20)
+valLbl.Position=UDim2.new(0,8,0,5)
+local bar=Instance.new("Frame",sf)
+bar.Name="Bar"
 bar.BackgroundColor3=th.SliderBar
 bar.BorderSizePixel=0
 bar.Size=UDim2.new(1,-20,0,6)
 bar.Position=UDim2.new(0,10,0,35)
-bar.Parent=sf
-local bc=Instance.new("UICorner",bar)
-bc.CornerRadius=UDim.new(0,3)
-local fill=Instance.new("Frame")
-fill.Name="SliderFill"
-fill.BackgroundColor3=th.SliderProgress
+local bCorn=Instance.new("UICorner",bar)
+bCorn.CornerRadius=UDim.new(0,3)
+local fill=Instance.new("Frame",bar)
+fill.Name="Progress"
+fill.BackgroundColor3=th.SliderFill
 fill.BorderSizePixel=0
 fill.Size=UDim2.new(0.5,0,1,0)
-fill.Parent=bar
-local fc=Instance.new("UICorner",fill)
-fc.CornerRadius=UDim.new(0,3)
-local minv=info.Min or 0
-local maxv=info.Max or 100
+local fCorn=Instance.new("UICorner",fill)
+fCorn.CornerRadius=UDim.new(0,3)
+local min=info.Min or 0
+local max=info.Max or 100
 local cur=info.Default or 0
 local inc=info.Increment or 1
-local function SetValue(x)
-x=math.clamp(x,minv,maxv)
-local stp=math.floor((x-minv)/inc+0.5)
-x=minv+stp*inc
-local pct=(x-minv)/(maxv-minv)
+local function UpdateValue(x)
+x=math.clamp(x,min,max)
+local stp=math.floor((x-min)/inc+0.5)
+x=min+stp*inc
+local pct=(x-min)/(max-min)
 fill.Size=UDim2.new(pct,0,1,0)
-vl.Text=tostring(x)..(info.Suffix or "")
+valLbl.Text=tostring(x)..(info.Suffix or "")
 if info.Callback then info.Callback(x)end
 cur=x
 end
 local dragging=false
-local barBtn=Instance.new("TextButton")
-barBtn.Name="BarInput"
-barBtn.Text=""
-barBtn.BackgroundTransparency=1
-barBtn.Size=UDim2.new(1,0,1,0)
-barBtn.Parent=bar
-barBtn.MouseButton1Down:Connect(function(x,y)
+local bBtn=Instance.new("TextButton",bar)
+bBtn.Name="BarClick"
+bBtn.Text=""
+bBtn.BackgroundTransparency=1
+bBtn.Size=UDim2.new(1,0,1,0)
+bBtn.MouseButton1Down:Connect(function(x,y)
 dragging=true
-local st=bar.AbsolutePosition.X
-local sz=bar.AbsoluteSize.X
-local dx=x-st
-local ratio=dx/sz
-SetValue(minv+ratio*(maxv-minv))
+local barPos=bar.AbsolutePosition.X
+local barSize=bar.AbsoluteSize.X
+local delta=x-barPos
+local ratio=delta/barSize
+UpdateValue(min+ratio*(max-min))
 end)
-barBtn.MouseButton1Up:Connect(function()dragging=false end)
+bBtn.MouseButton1Up:Connect(function()dragging=false end)
 UserInputService.InputChanged:Connect(function(i)
 if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then
 local xx=i.Position.X
-local st=bar.AbsolutePosition.X
-local sz=bar.AbsoluteSize.X
-local delta=xx-st
-local ratio=delta/sz
-SetValue(minv+ratio*(maxv-minv))
+local barPos=bar.AbsolutePosition.X
+local barSize=bar.AbsoluteSize.X
+local delta=xx-barPos
+local ratio=delta/barSize
+UpdateValue(min+ratio*(max-min))
 end
 end)
-SetValue(cur)
-local ret={}
-function ret:Set(v)SetValue(v)end
-return ret
+UpdateValue(cur)
+sf.BackgroundTransparency=1
+str.Transparency=1
+tTitle.TextTransparency=1
+valLbl.TextTransparency=1
+MakeTween(sf,{BackgroundTransparency=0},0.7)
+MakeTween(str,{Transparency=0.5},0.7)
+MakeTween(tTitle,{TextTransparency=0},0.7)
+MakeTween(valLbl,{TextTransparency=0},0.7)
+local SlObj={}
+function SlObj:Set(v)
+UpdateValue(v)
 end
-function NihubLarge.Elements.CreateDropdown(parent,info)
-local th=NihubLarge.CurrentTheme
-local df=Instance.new("Frame")
-df.Name=(info.Name or "Dropdown").."_Element"
-df.BackgroundColor3=th.ElementBackground
-df.BorderSizePixel=0
-df.Size=UDim2.new(1,-8,0,40)
-df.Parent=parent
-local cn=Instance.new("UICorner",df)
+function SlObj:Get()
+return cur
+end
+return SlObj
+end
+function Module.CreateDropdown(parent,info)
+local th=BigUI.CurrentTheme
+local dd=Instance.new("Frame",parent)
+dd.Name=(info.Name or "Dropdown").."_Dropdown"
+dd.BackgroundColor3=th.ElementBG
+dd.BorderSizePixel=0
+dd.Size=UDim2.new(1,-8,0,40)
+local cn=Instance.new("UICorner",dd)
 cn.CornerRadius=UDim.new(0,6)
-local st=Instance.new("UIStroke",df)
-st.Color=th.StrokeColor
+local st=Instance.new("UIStroke",dd)
+st.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
 st.Thickness=1
+st.Color=th.Stroke
 st.Transparency=0.5
-local tl=Instance.new("TextLabel")
-tl.Name="DropdownTitle"
-tl.Parent=df
-tl.BackgroundTransparency=1
-tl.Font=th.Font
-tl.TextSize=14
-tl.TextColor3=th.TextColor
-tl.Text=info.Name or "Dropdown"
-tl.TextXAlignment=Enum.TextXAlignment.Left
-tl.Size=UDim2.new(1,-10,0,20)
-tl.Position=UDim2.new(0,8,0,2)
-local sel=Instance.new("TextLabel")
-sel.Name="DropdownSelected"
+local tTitle=Instance.new("TextLabel",dd)
+tTitle.Name="DropdownTitle"
+tTitle.BackgroundTransparency=1
+tTitle.Font=th.Font
+tTitle.TextSize=14
+tTitle.TextColor3=th.TextCol
+tTitle.Text=info.Name or "Dropdown"
+tTitle.TextXAlignment=Enum.TextXAlignment.Left
+tTitle.Size=UDim2.new(1,-10,0,20)
+tTitle.Position=UDim2.new(0,8,0,2)
+local sel=Instance.new("TextLabel",dd)
+sel.Name="Selected"
 sel.BackgroundTransparency=1
 sel.Font=th.Font
 sel.TextSize=14
-sel.TextColor3=th.TextColor
+sel.TextColor3=th.TextCol
 sel.Text=info.Default or ((info.Options and info.Options[1]) or "None")
 sel.TextXAlignment=Enum.TextXAlignment.Right
 sel.Size=UDim2.new(1,-10,0,20)
 sel.Position=UDim2.new(0,8,0,2)
-sel.Parent=df
-local expand=Instance.new("TextButton")
-expand.Name="ExpandButton"
+local expand=Instance.new("TextButton",dd)
+expand.Name="Expand"
 expand.Text=""
 expand.BackgroundTransparency=1
 expand.Size=UDim2.new(1,0,1,0)
-expand.Parent=df
-local optFrame=Instance.new("Frame")
-optFrame.Name="DropdownOptionFrame"
-optFrame.BackgroundColor3=th.DropdownBackground
+local optFrame=Instance.new("Frame",dd)
+optFrame.Name="OptionFrame"
+optFrame.BackgroundColor3=th.DropdownBG
 optFrame.BorderSizePixel=0
 optFrame.Size=UDim2.new(1,0,0,0)
 optFrame.ClipsDescendants=true
 optFrame.Visible=false
-optFrame.Parent=df
-local oc=Instance.new("UICorner",optFrame)
-oc.CornerRadius=UDim.new(0,6)
-local os=Instance.new("UIStroke",optFrame)
-os.Thickness=1
-os.Color=th.StrokeColor
-os.Transparency=0.5
+local ocorn=Instance.new("UICorner",optFrame)
+ocorn.CornerRadius=UDim.new(0,6)
+local ostr=Instance.new("UIStroke",optFrame)
+ostr.Thickness=1
+ostr.Color=th.Stroke
+ostr.Transparency=0.5
 local oll=Instance.new("UIListLayout",optFrame)
 oll.SortOrder=Enum.SortOrder.LayoutOrder
 local isOpen=false
 local function ToggleDrop()
 if isOpen then
 isOpen=false
-TweenObj(optFrame,{Size=UDim2.new(1,0,0,0)},0.3)
+MakeTween(optFrame,{Size=UDim2.new(1,0,0,0)},0.3)
 wait(0.3)
 optFrame.Visible=false
 else
 isOpen=true
 optFrame.Visible=true
 local h=0
-if info.Options then h=#info.Options*22 end
-TweenObj(optFrame,{Size=UDim2.new(1,0,0,h)},0.3)
+if info.Options then
+h=#info.Options*22
+end
+MakeTween(optFrame,{Size=UDim2.new(1,0,0,h)},0.3)
 end
 end
 expand.MouseButton1Click:Connect(ToggleDrop)
 if info.Options then
-for i,op in ipairs(info.Options)do
-local opb=Instance.new("TextButton")
-opb.Name="Option_"..tostring(op)
-opb.BackgroundColor3=th.DropdownBackground
-opb.BorderSizePixel=0
-opb.Text=op
-opb.Font=th.Font
-opb.TextSize=14
-opb.TextColor3=th.TextColor
-opb.Size=UDim2.new(1,0,0,22)
-opb.Parent=optFrame
-local ost2=Instance.new("UIStroke",opb)
-ost2.Thickness=1
-ost2.Transparency=1
-opb.MouseButton1Click:Connect(function()
-sel.Text=op
-ToggleDrop()
-if info.Callback then info.Callback(op)end
-end)
-opb.MouseEnter:Connect(function()
-TweenObj(opb,{BackgroundColor3=th.DropdownHover},0.2)
-end)
-opb.MouseLeave:Connect(function()
-TweenObj(opb,{BackgroundColor3=th.DropdownBackground},0.2)
-end)
-end
-end
-local ret={}
-function ret:Set(v)
+for i,v in ipairs(info.Options)do
+local op=Instance.new("TextButton",optFrame)
+op.Name="Option_"..tostring(v)
+op.BackgroundColor3=th.DropdownBG
+op.BorderSizePixel=0
+op.Text=v
+op.Font=th.Font
+op.TextSize=14
+op.TextColor3=th.TextCol
+op.Size=UDim2.new(1,0,0,22)
+local opStroke=Instance.new("UIStroke",op)
+opStroke.Thickness=1
+opStroke.Transparency=1
+op.MouseButton1Click:Connect(function()
 sel.Text=v
-if info.Callback then info.Callback(v)end
+ToggleDrop()
+if info.Callback then
+info.Callback(v)
 end
-function ret:Get()
+end)
+op.MouseEnter:Connect(function()
+MakeTween(op,{BackgroundColor3=th.DropdownHover},0.2)
+end)
+op.MouseLeave:Connect(function()
+MakeTween(op,{BackgroundColor3=th.DropdownBG},0.2)
+end)
+end
+end
+dd.BackgroundTransparency=1
+st.Transparency=1
+tTitle.TextTransparency=1
+sel.TextTransparency=1
+MakeTween(dd,{BackgroundTransparency=0},0.7)
+MakeTween(st,{Transparency=0.5},0.7)
+MakeTween(tTitle,{TextTransparency=0},0.7)
+MakeTween(sel,{TextTransparency=0},0.7)
+local DropObj={}
+function DropObj:Set(v)
+sel.Text=v
+if info.Callback then
+info.Callback(v)
+end
+end
+function DropObj:Get()
 return sel.Text
 end
-return ret
+return DropObj
 end
-function NihubLarge.Elements.CreateInput(parent,info)
-local th=NihubLarge.CurrentTheme
-local inF=Instance.new("Frame")
-inF.Name=(info.Name or "Input").."_Element"
-inF.BackgroundColor3=th.ElementBackground
-inF.BorderSizePixel=0
-inF.Size=UDim2.new(1,-8,0,40)
-inF.Parent=parent
-local cn=Instance.new("UICorner",inF)
-cn.CornerRadius=UDim.new(0,6)
-local st=Instance.new("UIStroke",inF)
-st.Color=th.StrokeColor
-st.Thickness=1
-st.Transparency=0.5
-local tLab=Instance.new("TextLabel")
-tLab.Name="InputTitle"
-tLab.BackgroundTransparency=1
-tLab.Font=th.Font
-tLab.TextSize=14
-tLab.TextColor3=th.TextColor
-tLab.Text=info.Name or "Input"
-tLab.TextXAlignment=Enum.TextXAlignment.Left
-tLab.Size=UDim2.new(1,-10,0,20)
-tLab.Position=UDim2.new(0,8,0,2)
-tLab.Parent=inF
-local box=Instance.new("TextBox")
-box.Name="InputBox"
-box.BackgroundColor3=th.ElementBackground
+function Module.CreateInput(parent,info)
+local th=BigUI.CurrentTheme
+local ifr=Instance.new("Frame",parent)
+ifr.Name=(info.Name or "Input").."_Input"
+ifr.BackgroundColor3=th.ElementBG
+ifr.BorderSizePixel=0
+ifr.Size=UDim2.new(1,-8,0,40)
+local icorn=Instance.new("UICorner",ifr)
+icorn.CornerRadius=UDim.new(0,6)
+local istr=Instance.new("UIStroke",ifr)
+istr.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+istr.Thickness=1
+istr.Color=th.Stroke
+istr.Transparency=0.5
+local tTitle=Instance.new("TextLabel",ifr)
+tTitle.Name="InputTitle"
+tTitle.BackgroundTransparency=1
+tTitle.Font=th.Font
+tTitle.TextSize=14
+tTitle.TextColor3=th.TextCol
+tTitle.Text=info.Name or "Input"
+tTitle.TextXAlignment=Enum.TextXAlignment.Left
+tTitle.Size=UDim2.new(1,-10,0,20)
+tTitle.Position=UDim2.new(0,8,0,2)
+local box=Instance.new("TextBox",ifr)
+box.Name="Box"
+box.BackgroundColor3=th.ElementBG
 box.BorderSizePixel=0
 box.Size=UDim2.new(1,-20,0,20)
 box.Position=UDim2.new(0,10,0,20)
 box.Font=th.Font
 box.TextSize=14
-box.TextColor3=th.TextColor
+box.TextColor3=th.TextCol
 box.Text=""
-box.PlaceholderText=info.Placeholder or "Type here..."
-box.Parent=inF
-local bc=Instance.new("UICorner",box)
-bc.CornerRadius=UDim.new(0,4)
-local bs=Instance.new("UIStroke",box)
-bs.Thickness=1
-bs.Color=th.StrokeColor
-bs.Transparency=0.5
-box.FocusLost:Connect(function()
-if info.Callback then info.Callback(box.Text)end
-if info.ClearOnFocusLost then box.Text=""end
-end)
-local ret={}
-function ret:Set(txt)
-box.Text=txt
-if info.Callback then info.Callback(txt)end
+box.PlaceholderText=info.Placeholder or "Type..."
+local bcorn=Instance.new("UICorner",box)
+bcorn.CornerRadius=UDim.new(0,4)
+local bstr=Instance.new("UIStroke",box)
+bstr.Thickness=1
+bstr.Color=th.Stroke
+bstr.Transparency=0.5
+box.FocusLost:Connect(function(enter)
+if info.Callback then
+info.Callback(box.Text)
 end
-function ret:Get()
+if info.ClearOnFocusLost then
+box.Text=""
+end
+end)
+ifr.BackgroundTransparency=1
+istr.Transparency=1
+tTitle.TextTransparency=1
+MakeTween(ifr,{BackgroundTransparency=0},0.7)
+MakeTween(istr,{Transparency=0.5},0.7)
+MakeTween(tTitle,{TextTransparency=0},0.7)
+local InObj={}
+function InObj:Set(txt)
+box.Text=txt
+if info.Callback then
+info.Callback(txt)
+end
+end
+function InObj:Get()
 return box.Text
 end
-return ret
+return InObj
 end
-function NihubLarge:_AttachSectionMethods(sec)
-local M={}
-function M:CreateToggle(d)return NihubLarge.Elements.CreateToggle(sec.Frame,d)end
-function M:CreateSlider(d)return NihubLarge.Elements.CreateSlider(sec.Frame,d)end
-function M:CreateDropdown(d)return NihubLarge.Elements.CreateDropdown(sec.Frame,d)end
-function M:CreateInput(d)return NihubLarge.Elements.CreateInput(sec.Frame,d)end
-return M
+function Module.CreateColorPicker(parent,info)
+local th=BigUI.CurrentTheme
+local cp=Instance.new("Frame",parent)
+cp.Name=(info.Name or "ColorPicker").."_Color"
+cp.BackgroundColor3=th.ElementBG
+cp.BorderSizePixel=0
+cp.Size=UDim2.new(1,-8,0,60)
+local cc=Instance.new("UICorner",cp)
+cc.CornerRadius=UDim.new(0,6)
+local cs=Instance.new("UIStroke",cp)
+cs.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+cs.Thickness=1
+cs.Color=th.Stroke
+cs.Transparency=0.5
+local tTitle=Instance.new("TextLabel",cp)
+tTitle.Name="ColorTitle"
+tTitle.BackgroundTransparency=1
+tTitle.Font=th.Font
+tTitle.TextSize=14
+tTitle.TextColor3=th.TextCol
+tTitle.Text=info.Name or "ColorPicker"
+tTitle.TextXAlignment=Enum.TextXAlignment.Left
+tTitle.Size=UDim2.new(1,-10,0,20)
+tTitle.Position=UDim2.new(0,8,0,5)
+local disp=Instance.new("Frame",cp)
+disp.Name="ColorDisplay"
+disp.BackgroundColor3=info.Default or Color3.fromRGB(255,0,0)
+disp.BorderSizePixel=0
+disp.Size=UDim2.new(0,40,0,20)
+disp.Position=UDim2.new(1,-50,0,5)
+local dc=Instance.new("UICorner",disp)
+dc.CornerRadius=UDim.new(0,5)
+local function Update(c3)
+disp.BackgroundColor3=c3
+if info.Callback then
+info.Callback(c3)
 end
-local oldSec=function(tab,col,title)
-local s=tab:CreateSection(col,title)
-local ex=NihubLarge:_AttachSectionMethods(s)
-for k,v in pairs(s)do if k~="Frame"then ex[k]=v else ex.Frame=v end end
-return ex
 end
-function NihubLarge:CreateSection(tb,col,ti)
-return oldSec(tb,col,ti)
-end
-function BaseWin:CreateSection(tb,col,ti)
-return NihubLarge:CreateSection(tb,col,ti)
-end
-local oldT=NihubLarge.CreateTab
-function NihubLarge.CreateTab(w,n,ic)
-local t=oldT(w,n,ic)
-function t:CreateSection(col,tit)
-return oldSec(self,col,tit)
-end
-return t
-end
-function NihubLarge:Notify(info)
-if not self.NotifGui then
-self.NotifGui=Instance.new("ScreenGui")
-self.NotifGui.Name="NihubNotifications"
-local c=Instance.new("Frame")
-c.Name="Container"
-c.BackgroundTransparency=1
-c.Size=UDim2.new(1,0,1,0)
-c.Parent=self.NotifGui
-SafeParent(self.NotifGui)
-end
-local th=self.CurrentTheme
-local d=info.Duration or 5
-local nf=Instance.new("Frame")
-nf.Name="Notification"
-nf.BackgroundColor3=th.ElementBackground
-nf.BorderSizePixel=0
-nf.Size=UDim2.new(0,300,0,80)
-nf.Position=UDim2.new(1,310,1,-100)
-nf.Parent=self.NotifGui.Container
-local corner=Instance.new("UICorner",nf)
-corner.CornerRadius=UDim.new(0,6)
-local s=Instance.new("UIStroke",nf)
-s.Color=th.StrokeColor
-s.Thickness=1
-s.Transparency=0.4
-local ttl=Instance.new("TextLabel")
-ttl.Name="NotifTitle"
-ttl.Text=info.Title or "Notification"
-ttl.Font=th.Font
-ttl.TextSize=16
-ttl.TextColor3=th.TextColor
-ttl.BackgroundTransparency=1
-ttl.Size=UDim2.new(1,-10,0,20)
-ttl.Position=UDim2.new(0,10,0,5)
-ttl.TextXAlignment=Enum.TextXAlignment.Left
-ttl.Parent=nf
-local bdy=Instance.new("TextLabel")
-bdy.Name="NotifBody"
-bdy.Text=info.Text or "Notification text"
-bdy.Font=th.Font
-bdy.TextSize=14
-bdy.TextColor3=th.TextColor
-bdy.BackgroundTransparency=1
-bdy.Size=UDim2.new(1,-20,0,40)
-bdy.Position=UDim2.new(0,10,0,25)
-bdy.TextWrapped=true
-bdy.TextXAlignment=Enum.TextXAlignment.Left
-bdy.Parent=nf
-nf.BackgroundTransparency=1
-ttl.TextTransparency=1
-bdy.TextTransparency=1
-nf.Position=UDim2.new(1,310,1,-100)
-TweenObj(nf,{Position=UDim2.new(1,-310,1,-100),BackgroundTransparency=0},0.4)
-TweenObj(ttl,{TextTransparency=0},0.6)
-TweenObj(bdy,{TextTransparency=0},0.6)
-task.spawn(function()
-wait(d)
-TweenObj(nf,{Position=UDim2.new(1,310,1,-100),BackgroundTransparency=1},0.4)
-TweenObj(ttl,{TextTransparency=1},0.3)
-TweenObj(bdy,{TextTransparency=1},0.3)
-wait(0.4)
-nf:Destroy()
+local pick=Instance.new("TextButton",cp)
+pick.Name="Pick"
+pick.Text=""
+pick.Size=UDim2.new(0,40,0,20)
+pick.Position=UDim2.new(1,-50,0,5)
+pick.BackgroundTransparency=1
+pick.MouseButton1Click:Connect(function()
+local r=math.random(50,255)
+local g=math.random(50,255)
+local b=math.random(50,255)
+Update(Color3.fromRGB(r,g,b))
 end)
+Update(disp.BackgroundColor3)
+cp.BackgroundTransparency=1
+cs.Transparency=1
+tTitle.TextTransparency=1
+MakeTween(cp,{BackgroundTransparency=0},0.7)
+MakeTween(cs,{Transparency=0.5},0.7)
+MakeTween(tTitle,{TextTransparency=0},0.7)
+local CoObj={}
+function CoObj:Set(c3)
+Update(c3)
 end
-function NihubLarge:CreateThemeTab(win)
-local t=self:CreateTab(win,"Settings",0)
-local sec=t:CreateSection("left","Theme Manager")
-sec:CreateToggle({Name="Use DefaultDarkGreen",Default=false,Callback=function(b)if b then self:ApplyTheme(self.Themes.DefaultDarkGreen)self:Notify({Title="Theme",Text="Switched to DefaultDarkGreen",Duration=3})end end})
-sec:CreateToggle({Name="Use LimeGreen",Default=false,Callback=function(b)if b then self:ApplyTheme(self.Themes.LimeGreen)self:Notify({Title="Theme",Text="Switched to LimeGreen",Duration=3})end end})
-local s2=t:CreateSection("right","Config Stuff")
-s2:CreateInput({Name="Config File",Placeholder="FileName.json",Callback=function(tx)if tx~=""then self.Config.FileName=tx self:Notify({Title="Config",Text="File set "..tx,Duration=3})end end})
-s2:CreateToggle({Name="Enable Config",Default=false,Callback=function(b)self.Config.Enabled=b if b then self:Notify({Title="Config",Text="Enabled",Duration=3})else self:Notify({Title="Config",Text="Disabled",Duration=3})end end})
+function CoObj:Get()
+return disp.BackgroundColor3
 end
-function NihubLarge:HideEntireUI()
-local cg=CoreGui:FindFirstChild("NihubPrivateUI_V3")
-if cg then cg.Enabled=false end
+return CoObj
 end
-function NihubLarge:ShowEntireUI()
-local cg=CoreGui:FindFirstChild("NihubPrivateUI_V3")
-if cg then cg.Enabled=true end
-end
-UserInputService.InputBegan:Connect(function(i,gp)
-if gp then return end
-if i.KeyCode==NihubLarge.ToggleKey then
-local cg=CoreGui:FindFirstChild("NihubPrivateUI_V3")
-if cg then
-local main=cg:FindFirstChild("MainFrame",true)
-local side=main and main:FindFirstChild("Sidebar")
-local top=main and main:FindFirstChild("Topbar")
-local cont=main and main:FindFirstChild("ContentFrame")
-local shadow=main and main:FindFirstChild("ShadowHolder")
-if Minimizing then return end
-Minimizing=true
-if Hidden then
-Hidden=false
-if side then side.Visible=true end
-if top then top.Visible=true end
-if cont then cont.Visible=true end
-if shadow then shadow.Visible=true end
-TweenObj(main,{Size=UDim2.new(0,900,0,550)},0.4)
-wait(0.4)
-else
-Hidden=true
-TweenObj(main,{Size=UDim2.new(0,900,0,45)},0.4)
-wait(0.4)
-if side then side.Visible=false end
-if top then top.Visible=false end
-if cont then cont.Visible=false end
-if shadow then shadow.Visible=false end
-end
-Minimizing=false
-end
+function Module.CreateButton(parent,info)
+local th=BigUI.CurrentTheme
+local bf=Instance.new("Frame",parent)
+bf.Name=(info.Name or "Button").."_Btn"
+bf.BackgroundColor3=th.ElementBG
+bf.BorderSizePixel=0
+bf.Size=UDim2.new(1,-8,0,40)
+local bc=Instance.new("UICorner",bf)
+bc.CornerRadius=UDim.new(0,6)
+local bs=Instance.new("UIStroke",bf)
+bs.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+bs.Thickness=1
+bs.Color=th.Stroke
+bs.Transparency=0.5
+local tTitle=Instance.new("TextLabel",bf)
+tTitle.Name="ButtonTitle"
+tTitle.BackgroundTransparency=1
+tTitle.Font=th.Font
+tTitle.TextSize=14
+tTitle.TextColor3=th.TextCol
+tTitle.Text=info.Name or "Button"
+tTitle.TextXAlignment=Enum.TextXAlignment.Left
+tTitle.Size=UDim2.new(1,-10,1,0)
+tTitle.Position=UDim2.new(0,8,0,0)
+local clk=Instance.new("TextButton",bf)
+clk.Name="Click"
+clk.Text=""
+clk.BackgroundTransparency=1
+clk.Size=UDim2.new(1,0,1,0)
+clk.MouseButton1Click:Connect(function()
+local s,e=pcall(function()info.Callback()end)
+if not s then
+MakeTween(bf,{BackgroundColor3=Color3.fromRGB(85,0,0)},0.3)
+MakeTween(bs,{Transparency=1},0.3)
+tTitle.Text="Callback Error"
+wait(0.5)
+tTitle.Text=info.Name
+MakeTween(bf,{BackgroundColor3=th.ElementBG},0.3)
+MakeTween(bs,{Transparency=0},0.3)
 end
 end)
-return NihubLarge
+bf.BackgroundTransparency=1
+bs.Transparency=1
+tTitle.TextTransparency=1
+MakeTween(bf,{BackgroundTransparency=0},0.7)
+MakeTween(bs,{Transparency=0.5},0.7)
+MakeTween(tTitle,{TextTransparency=0},0.7)
+local BtnObj={}
+function BtnObj:SetText(txt)
+tTitle.Text=txt
+end
+return BtnObj
+end
+return Module
+end
+local Components=SectionComponentsFactory()=SectionComponentsFactory()
+-- PART 3 (Lines ~1201–1800)
+
+local function AttachSectionMethods(frame)
+ local Methods={}
+ function Methods:CreateToggle(data)
+  return Components.CreateToggle(frame,data)
+ end
+ function Methods:CreateSlider(data)
+  return Components.CreateSlider(frame,data)
+ end
+ function Methods:CreateDropdown(data)
+  return Components.CreateDropdown(frame,data)
+ end
+ function Methods:CreateInput(data)
+  return Components.CreateInput(frame,data)
+ end
+ function Methods:CreateColorPicker(data)
+  return Components.CreateColorPicker(frame,data)
+ end
+ function Methods:CreateButton(data)
+  return Components.CreateButton(frame,data)
+ end
+ return Methods
+end
+
+local oldCreateSec
+oldCreateSec=function(tabObj,col,title)
+ local secObj=tabObj:CreateSection(col,title)
+ local extended=AttachSectionMethods(secObj.Frame)
+ for k,v in pairs(secObj) do
+  if k~="Frame" then
+   extended[k]=v
+  else
+   extended.Frame=v
+  end
+ end
+ return extended
+end
+
+function BigUI:CreateSection(tabObj,col,title)
+ return oldCreateSec(tabObj,col,title)
+end
+
+function BaseWin:CreateSection(tabObj,col,title)
+ return BigUI:CreateSection(tabObj,col,title)
+end
+
+local oldTab=BigUI.CreateTab
+function BigUI.CreateTab(w,n,i)
+ local t=oldTab(w,n,i)
+ function t:CreateSection(col,tt)
+  return oldCreateSec(self,col,tt)
+ end
+ return t
+end
+
+local notiGui=nil
+function BigUI:Notify(info)
+ if not notiGui then
+  notiGui=Instance.new("ScreenGui")
+  notiGui.Name="NihubNotifications_V3"
+  SafeParent(notiGui)
+  local container=Instance.new("Frame",notiGui)
+  container.Name="NotifyContainer"
+  container.BackgroundTransparency=1
+  container.Size=UDim2.new(1,0,1,0)
+ end
+ local th=self.CurrentTheme
+ local dur=info.Duration or 5
+ local nf=Instance.new("Frame",notiGui.NotifyContainer)
+ nf.Name="Notification"
+ nf.BackgroundColor3=th.ElementBG
+ nf.BorderSizePixel=0
+ nf.Size=UDim2.new(0,320,0,90)
+ nf.Position=UDim2.new(1,330,1,-110)
+ local corn=Instance.new("UICorner",nf)
+ corn.CornerRadius=UDim.new(0,6)
+ local str=Instance.new("UIStroke",nf)
+ str.Color=th.Stroke
+ str.Thickness=1
+ str.Transparency=0.4
+ local ttl=Instance.new("TextLabel",nf)
+ ttl.Name="NotiTitle"
+ ttl.Text=info.Title or "Notification"
+ ttl.Font=th.Font
+ ttl.TextSize=16
+ ttl.TextColor3=th.TextCol
+ ttl.BackgroundTransparency=1
+ ttl.Size=UDim2.new(1,-10,0,20)
+ ttl.Position=UDim2.new(0,10,0,5)
+ ttl.TextXAlignment=Enum.TextXAlignment.Left
+ local body=Instance.new("TextLabel",nf)
+ body.Name="NotiBody"
+ body.Text=info.Text or "Something"
+ body.Font=th.Font
+ body.TextSize=14
+ body.TextColor3=th.TextCol
+ body.TextWrapped=true
+ body.BackgroundTransparency=1
+ body.Size=UDim2.new(1,-20,0,40)
+ body.Position=UDim2.new(0,10,0,25)
+ body.TextXAlignment=Enum.TextXAlignment.Left
+ nf.BackgroundTransparency=1
+ ttl.TextTransparency=1
+ body.TextTransparency=1
+ MakeTween(nf,{Position=UDim2.new(1,-330,1,-110),BackgroundTransparency=0},0.4)
+ MakeTween(ttl,{TextTransparency=0},0.6)
+ MakeTween(body,{TextTransparency=0},0.6)
+ task.spawn(function()
+  wait(dur)
+  MakeTween(nf,{Position=UDim2.new(1,330,1,-110),BackgroundTransparency=1},0.4)
+  MakeTween(ttl,{TextTransparency=1},0.3)
+  MakeTween(body,{TextTransparency=1},0.3)
+  wait(0.4)
+  nf:Destroy()
+ end)
+end
+
+function BigUI:SaveConfig()
+ if not self.Config.Enabled then return end
+ local data={}
+ for f,v in pairs(self.Flags) do
+  data[f]=v
+ end
+ local encoded=HttpService:JSONEncode(data)
+ writefile(self.Config.FileName,encoded)
+end
+
+function BigUI:LoadConfig()
+ if not self.Config.Enabled then return end
+ if isfile(self.Config.FileName) then
+  local raw=readfile(self.Config.FileName)
+  local ok,dec=pcall(function()return HttpService:JSONDecode(raw)end)
+  if ok and dec then
+   for k,v in pairs(dec) do
+    self.Flags[k]=v
+   end
+  end
+ end
+end
+
+function BigUI:ApplyTheme(th)
+ self.CurrentTheme=th
+end
+
+function BigUI:CreateThemeTab(win)
+ local t=win:CreateTab("Misc",0)
+ local leftSec=t:CreateSection("left","Theme")
+ leftSec:CreateToggle({
+  Name="DefaultDarkGreen",
+  Default=false,
+  Callback=function(st)
+   if st then
+    BigUI:ApplyTheme(BigUI.Themes.DefaultDarkGreen)
+    BigUI:Notify({Title="Theme",Text="Switched to DefaultDarkGreen",Duration=3})
+   end
+  end
+ })
+ leftSec:CreateToggle({
+  Name="LimeGreen",
+  Default=false,
+  Callback=function(st)
+   if st then
+    BigUI:ApplyTheme(BigUI.Themes.LimeGreen)
+    BigUI:Notify({Title="Theme",Text="Switched to LimeGreen",Duration=3})
+   end
+  end
+ })
+ local rightSec=t:CreateSection("right","Configs")
+ rightSec:CreateInput({
+  Name="Config File",
+  Placeholder="Filename.json",
+  ClearOnFocusLost=false,
+  Callback=function(tx)
+   if tx~="" then
+    BigUI.Config.FileName=tx
+    BigUI:Notify({Title="Config",Text="Filename set to "..tx,Duration=3})
+   end
+  end
+ })
+ rightSec:CreateToggle({
+  Name="Enable Config",
+  Default=false,
+  Callback=function(b)
+   BigUI.Config.Enabled=b
+   if b then
+    BigUI:Notify({Title="Config",Text="Config saving enabled",Duration=3})
+   else
+    BigUI:Notify({Title="Config",Text="Config saving disabled",Duration=3})
+   end
+  end
+ })
+ rightSec:CreateButton({
+  Name="Save Config",
+  Callback=function()
+   BigUI:SaveConfig()
+   BigUI:Notify({Title="Config",Text="Configuration Saved",Duration=3})
+  end
+ })
+ rightSec:CreateButton({
+  Name="Load Config",
+  Callback=function()
+   BigUI:LoadConfig()
+   BigUI:Notify({Title="Config",Text="Configuration Loaded",Duration=3})
+  end
+ })
+end
+
+function BigUI:HideUI()
+ local cg=CoreGui:FindFirstChild("NihubPrivateUI_Large")
+ if cg then
+  cg.Enabled=false
+ end
+end
+
+function BigUI:ShowUI()
+ local cg=CoreGui:FindFirstChild("NihubPrivateUI_Large")
+ if cg then
+  cg.Enabled=true
+ end
+end
+
+UserInputService.InputBegan:Connect(function(inp,gp)
+ if gp then return end
+ if inp.KeyCode==BigUI.ToggleKey then
+  local cg=CoreGui:FindFirstChild("NihubPrivateUI_Large")
+  if cg then
+   local main=cg:FindFirstChild("MainFrameLarge",true)
+   local side=main and main:FindFirstChild("SidebarLarge")
+   local top=main and main:FindFirstChild("TopbarLarge")
+   local cont=main and main:FindFirstChild("ContentFrameLarge")
+   local shd=main and main:FindFirstChild("ShadowHolderFull")
+   if MinimizingUI then return end
+   MinimizingUI=true
+   if HiddenUI then
+    HiddenUI=false
+    if side then side.Visible=true end
+    if top then top.Visible=true end
+    if cont then cont.Visible=true end
+    if shd then shd.Visible=true end
+    MakeTween(main,{Size=UDim2.new(0,1000,0,600)},0.45)
+    wait(0.45)
+   else
+    HiddenUI=true
+    MakeTween(main,{Size=UDim2.new(0,1000,0,55)},0.45)
+    wait(0.45)
+    if side then side.Visible=false end
+    if top then top.Visible=false end
+    if cont then cont.Visible=false end
+    if shd then shd.Visible=false end
+   end
+   MinimizingUI=false
+  end
+ end
+end)
+
+-- PART 4 (Lines ~1801–~2200)
+
+local KeySystemToggle=false
+local KeySystemFileName="NihubKeySystem.json"
+local function AttemptKeySystem(settings)
+ if not settings.KeySystem then return true end
+ if not settings.KeySettings then return true end
+ if not isfolder("NihubKeys") then makefolder("NihubKeys") end
+ if settings.KeySettings.GrabKeyFromSite then
+  local ok,res=pcall(function()
+   settings.KeySettings.Key=game:HttpGet(settings.KeySettings.Key)
+  end)
+  if not ok then
+   warn("Error fetching key from site:",res)
+  end
+ end
+ if not settings.KeySettings.FileName then
+  settings.KeySettings.FileName="DefaultKeyFile"
+ end
+ KeySystemFileName=settings.KeySettings.FileName
+ local f="NihubKeys/"..KeySystemFileName
+ if isfile(f) then
+  local key=readfile(f)
+  if key==settings.KeySettings.Key then
+   KeySystemToggle=true
+  end
+ end
+ if KeySystemToggle then return true end
+ local tries=5
+ local sg=Instance.new("ScreenGui")
+ sg.Name="NihubKeySystemPrompt"
+ sg.IgnoreGuiInset=true
+ sg.DisplayOrder=999999999
+ local fr=Instance.new("Frame",sg)
+ fr.BackgroundColor3=Color3.fromRGB(30,30,30)
+ fr.Size=UDim2.new(0,400,0,150)
+ fr.Position=UDim2.new(0.5,-200,0.5,-75)
+ local cor=Instance.new("UICorner",fr)
+ cor.CornerRadius=UDim.new(0,8)
+ local tit=Instance.new("TextLabel",fr)
+ tit.Text=settings.KeySettings.Title or "Key System"
+ tit.Font=Enum.Font.Gotham
+ tit.TextSize=17
+ tit.TextColor3=Color3.fromRGB(240,240,240)
+ tit.BackgroundTransparency=1
+ tit.Size=UDim2.new(1,0,0,35)
+ tit.Position=UDim2.new(0,0,0,0)
+ local subt=Instance.new("TextLabel",fr)
+ subt.Text=settings.KeySettings.Subtitle or "Enter Key"
+ subt.Font=Enum.Font.Gotham
+ subt.TextSize=14
+ subt.TextColor3=Color3.fromRGB(200,200,200)
+ subt.BackgroundTransparency=1
+ subt.Size=UDim2.new(1,0,0,25)
+ subt.Position=UDim2.new(0,0,0,35)
+ local inp=Instance.new("TextBox",fr)
+ inp.BackgroundColor3=Color3.fromRGB(40,40,40)
+ inp.Text=""
+ inp.PlaceholderText="Type Key..."
+ inp.Font=Enum.Font.Gotham
+ inp.TextSize=14
+ inp.TextColor3=Color3.fromRGB(240,240,240)
+ inp.Size=UDim2.new(1,-20,0,30)
+ inp.Position=UDim2.new(0,10,0,65)
+ local bc=Instance.new("UICorner",inp)
+ bc.CornerRadius=UDim.new(0,5)
+ local confirm=Instance.new("TextButton",fr)
+ confirm.Text="Confirm"
+ confirm.Font=Enum.Font.Gotham
+ confirm.TextSize=14
+ confirm.TextColor3=Color3.fromRGB(240,240,240)
+ confirm.BackgroundColor3=Color3.fromRGB(50,90,50)
+ confirm.Size=UDim2.new(0,80,0,30)
+ confirm.Position=UDim2.new(1,-90,1,-40)
+ local cc=Instance.new("UICorner",confirm)
+ cc.CornerRadius=UDim.new(0,5)
+ local close=Instance.new("TextButton",fr)
+ close.Text="X"
+ close.Font=Enum.Font.Gotham
+ close.TextSize=14
+ close.TextColor3=Color3.fromRGB(240,240,240)
+ close.BackgroundColor3=Color3.fromRGB(90,30,30)
+ close.Size=UDim2.new(0,30,0,30)
+ close.Position=UDim2.new(1,-40,0,5)
+ local clc=Instance.new("UICorner",close)
+ clc.CornerRadius=UDim.new(0,5)
+ local function attempt()
+  if inp.Text==settings.KeySettings.Key then
+   if settings.KeySettings.SaveKey then
+    writefile(f,inp.Text)
+   end
+   sg:Destroy()
+   KeySystemToggle=true
+  else
+   tries=tries-1
+   if tries<=0 then
+    sg:Destroy()
+    game:Shutdown()
+   else
+    inp.Text=""
+   end
+  end
+ end
+ confirm.MouseButton1Click:Connect(attempt)
+ inp.FocusLost:Connect(function(enter)
+  if enter then attempt() end
+ end)
+ close.MouseButton1Click:Connect(function()
+  sg:Destroy()
+  game:Shutdown()
+ end)
+ sg.Parent=CoreGui
+ repeat task.wait() until KeySystemToggle or not sg or not sg.Parent
+ return KeySystemToggle
+end
+
+function BigUI:CreateWindow(sett)
+ local pass=AttemptKeySystem(sett)
+ if not pass then return end
+ local w=BaseWin.new(sett)
+ setmetatable(w,{__index=self})
+ return w
+end
+
+return BigUI
+
+
