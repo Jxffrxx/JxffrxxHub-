@@ -52,6 +52,13 @@ local isClicking = false
 local impalaHitboxVisualizerEnabled = false
 local impalaHitboxSizeMultiplier = 1
 local instaKillEnabled = false
+-- Speed and Acceleration Control Variables
+local speedToggle = false
+local accelerationToggle = false
+local customSpeed = 16 -- Default WalkSpeed
+local customAcceleration = 35 -- Default Acceleration
+
+
 local function enableInfiniteStats()
    infiniteStatsEnabled = true
    runService.Heartbeat:Connect(function()
@@ -285,6 +292,58 @@ local function enableAutoAim()
    end)
 end
 
+local function updateSpeedAndAcceleration()
+    local animalMovementHandler = player.PlayerScripts:FindFirstChild("AnimalGameFramework") and player.PlayerScripts.AnimalGameFramework:FindFirstChild("AnimalMovementHandler")
+
+    if not animalMovementHandler then
+        Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed to find AnimalMovementHandler script.",
+            Duration = 5
+        })
+        return
+    end
+
+    local movementHandler = require(animalMovementHandler)
+
+    -- Ensure character exists
+    if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+
+    -- Handle Speed Toggle
+    if speedToggle then
+        local moveVector = humanoid.MoveDirection -- Movement direction from input (W, A, S, D)
+
+        if moveVector.Magnitude > 0 then
+            -- Player is moving: Accelerate toward target speed
+            humanoid.WalkSpeed = math.min(humanoid.WalkSpeed + customAcceleration * task.wait(), customSpeed)
+        else
+            -- Player is not moving: Decelerate back to 0 (or a minimum value, like 16 for default speed)
+            humanoid.WalkSpeed = math.max(humanoid.WalkSpeed - customAcceleration * task.wait(), 0)
+        end
+    else
+        humanoid.WalkSpeed = 16 -- Default Roblox speed if toggle is off
+    end
+
+    -- Apply acceleration/deceleration attributes if the toggle is enabled
+    if accelerationToggle then
+        character:SetAttribute("Acceleration", customAcceleration)
+        character:SetAttribute("Deceleration", customAcceleration) -- Same slider value for both acceleration and deceleration
+    end
+end
+
+runService.Stepped:Connect(function()
+   if speedToggle or accelerationToggle then
+      updateSpeedAndAcceleration()
+   end
+end)
+
+
+
 userInputService.InputBegan:Connect(function(input, gameProcessed)
    if gameProcessed then return end
    if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -400,6 +459,71 @@ PVP_Tab:CreateSlider({
    end
 })
 
+-- Speed Toggle
+MiscTab:CreateToggle({
+   Name = "Enable Custom Speed",
+   CurrentValue = false,
+   Flag = "CustomSpeedToggle",
+   Callback = function(Value)
+      speedToggle = Value
+      Rayfield:Notify({
+         Title = "Custom Speed",
+         Content = Value and "Custom Speed Enabled" or "Custom Speed Disabled",
+         Duration = 5
+      })
+   end
+})
+
+-- Speed Slider
+MiscTab:CreateSlider({
+   Name = "Custom Speed",
+   Range = {16, 10000}, -- Adjust the range as needed
+   Increment = 1,
+   Suffix = "WalkSpeed",
+   CurrentValue = 16,
+   Flag = "SpeedSlider",
+   Callback = function(Value)
+      customSpeed = Value
+      if speedToggle then
+         updateSpeedAndAcceleration()
+      end
+   end
+})
+
+-- Acceleration Toggle
+MiscTab:CreateToggle({
+   Name = "Enable Custom Acceleration",
+   CurrentValue = false,
+   Flag = "CustomAccelerationToggle",
+   Callback = function(Value)
+      accelerationToggle = Value
+      Rayfield:Notify({
+         Title = "Custom Acceleration",
+         Content = Value and "Custom Acceleration Enabled" or "Custom Acceleration Disabled",
+         Duration = 5
+      })
+   end
+})
+
+-- Acceleration Slider
+MiscTab:CreateSlider({
+   Name = "Custom Acceleration",
+   Range = {10, 10000}, -- Adjust the range as needed
+   Increment = 1,
+   Suffix = "Units",
+   CurrentValue = 35,
+   Flag = "AccelerationSlider",
+   Callback = function(Value)
+      customAcceleration = Value
+      if accelerationToggle then
+         updateSpeedAndAcceleration()
+      end
+   end
+})
+
+
+
+
 PVP_Tab:CreateToggle({
    Name = "Enable Auto-Aim",
    CurrentValue = false,
@@ -423,6 +547,7 @@ PVP_Tab:CreateToggle({
       end
    end
 })
+
 player.CharacterAdded:Connect(function(newCharacter)
    character = newCharacter
 
@@ -437,6 +562,10 @@ player.CharacterAdded:Connect(function(newCharacter)
    if impalaHitboxVisualizerEnabled then
       toggleImpalaHitboxVisualizer(true)
    end
+
+    if speedToggle or accelerationToggle then
+      updateSpeedAndAcceleration()
+    end
 
 end)
 
