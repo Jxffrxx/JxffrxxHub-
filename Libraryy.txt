@@ -136,7 +136,7 @@ end
 local WeightedDragConfig={Speed=0.15,Step=0.016}
 
 --------------------------------------------------------------------------------
--- PART 4: BaseWindow - No top bar. Weighted drag from brand label in left sidebar
+-- PART 4: BaseWindow - Weighted drag from brand label
 --------------------------------------------------------------------------------
 
 local BaseWindow={}
@@ -287,10 +287,10 @@ function BaseWindow.new(options)
     cstroke.Color=self.Theme.StrokeColor
     cstroke.Transparency=0.6
 
-    -- We'll add some top padding so that the search bar sits up top
+    -- Adjusted UIPadding to move content lower due to search bar repositioning
     local ContentPad=Instance.new("UIPadding")
     ContentPad.Name="ContentPadding"
-    ContentPad.PaddingTop=UDim.new(0,50)  -- push real content 50px down
+    ContentPad.PaddingTop=UDim.new(0,70)  -- Increased top padding to move content further down
     ContentPad.PaddingLeft=UDim.new(0,10)
     ContentPad.PaddingRight=UDim.new(0,10)
     ContentPad.PaddingBottom=UDim.new(0,10)
@@ -300,7 +300,7 @@ function BaseWindow.new(options)
     PagesFolder.Name="PagesFolder"
     PagesFolder.Parent=ContentFrame
 
-    -- search bar near top-right
+    -- search bar near top-right, moved further up
     local SearchBar=Instance.new("TextBox")
     SearchBar.Name="SearchBar"
     SearchBar.PlaceholderText="Search UI..."
@@ -310,7 +310,7 @@ function BaseWindow.new(options)
     SearchBar.BackgroundColor3=self.Theme.ElementBackground
     SearchBar.Size=UDim2.new(0,180,0,28)
     SearchBar.AnchorPoint=Vector2.new(1,0)
-    SearchBar.Position=UDim2.new(1,-10,0,3)  -- pinned top-right, 10px from top
+    SearchBar.Position=UDim2.new(1,-10,0,20)  -- Moved up from Y=10 to Y=20
     SearchBar.ClearTextOnFocus=false
     SearchBar.Text=""
     SearchBar.Parent=ContentFrame
@@ -374,8 +374,7 @@ function NihubUI:CreateWindow(opts)
     }
     setmetatable(window,combined)
     return window
-end
---------------------------------------------------------------------------------
+end--------------------------------------------------------------------------------
 -- PART 5: CreateTab, with small red accent bar on the left
 --------------------------------------------------------------------------------
 
