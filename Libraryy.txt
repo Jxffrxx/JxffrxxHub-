@@ -683,9 +683,6 @@ end
 -- works, but typically you'd do 'window:CreateTab(...)'
 ----------------------------------------------------------------------------------------------------
 
-function NihubUI.CreateTab(window, name, icon)
-    return window:CreateTab(name, icon)
-end
 
 ----------------------------------------------------------------------------------------------------
 -- LINE 15
