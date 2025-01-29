@@ -454,39 +454,54 @@ end
 -- sidebar, plus a "page" in the ContentFrame’s PagesFolder, plus the two columns for content.
 ----------------------------------------------------------------------------------------------------
 
+--------------------------------------------------------------------
+-- ROBUST CreateTab FUNCTION
+--------------------------------------------------------------------
 function BaseWindow:CreateTab(tabName, iconId)
-    local theme   = self.Theme
-    local sidebar = self.Sidebar
-    local pages   = self.PagesFolder
+    -- 1) Validate inputs and references
+    if typeof(tabName) ~= "string" or tabName == "" then
+        warn("[NihubUI] CreateTab: 'tabName' invalid or empty; using default name.")
+        tabName = "UnnamedTab"
+    end
+    local theme = self.Theme or NihubUI.CurrentTheme
+    if not self.Sidebar then
+        warn("[NihubUI] CreateTab: 'self.Sidebar' is missing. Did you call this on a valid window object?")
+        return nil
+    end
+    if not self.PagesFolder then
+        warn("[NihubUI] CreateTab: 'self.PagesFolder' is missing. Did you call this on a valid window object?")
+        return nil
+    end
 
-    -- Create the tab button
+    -- 2) Create the tab button on the sidebar
     local TabButton = Instance.new("TextButton")
     TabButton.Name = tabName.."_Tab"
     TabButton.BackgroundColor3 = theme.Sidebar
-    TabButton.BorderSizePixel = 0
+    TabButton.BorderSizePixel  = 0
     TabButton.Size = UDim2.new(1,0,0,40)
     TabButton.Text = ""
-    TabButton.Parent = sidebar
+    TabButton.Parent = self.Sidebar
 
-    local tabCorner = Instance.new("UICorner", TabButton)
+    local tabCorner = Instance.new("UICorner")
     tabCorner.CornerRadius = UDim.new(0,6)
-    local tabStroke = Instance.new("UIStroke", TabButton)
+    tabCorner.Parent = TabButton
+
+    local tabStroke = Instance.new("UIStroke")
     tabStroke.Color = theme.StrokeColor
     tabStroke.Transparency = 0.7
+    tabStroke.Parent = TabButton
 
+    -- 3) Optional icon
     local Icon = Instance.new("ImageLabel")
     Icon.Name = "TabIcon"
     Icon.BackgroundTransparency = 1
     Icon.Position = UDim2.new(0,8,0.5,-10)
     Icon.Size = UDim2.new(0,20,0,20)
-    if iconId then
-        Icon.Image = "rbxassetid://"..tostring(iconId)
-    else
-        Icon.Image = ""
-    end
     Icon.ImageColor3 = theme.TextColor
+    Icon.Image = (iconId and ("rbxassetid://"..tostring(iconId))) or ""
     Icon.Parent = TabButton
 
+    -- 4) Title label on the tab button
     local TitleLabel = Instance.new("TextLabel")
     TitleLabel.Name = "TabTitle"
     TitleLabel.BackgroundTransparency = 1
@@ -499,15 +514,15 @@ function BaseWindow:CreateTab(tabName, iconId)
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
     TitleLabel.Parent = TabButton
 
-    -- Create the page
+    -- 5) Create a page frame inside the PagesFolder
     local Page = Instance.new("Frame")
     Page.Name = tabName.."_Page"
     Page.Size = UDim2.new(1,0,1,0)
     Page.BackgroundTransparency = 1
     Page.Visible = false
-    Page.Parent = pages
+    Page.Parent = self.PagesFolder
 
-    -- Make a container with horizontal layout for 2 columns
+    -- 6) For multi-column layout, create a container frame within Page
     local Container = Instance.new("Frame")
     Container.Name = "ColumnsContainer"
     Container.Size = UDim2.new(1,0,1,0)
@@ -521,61 +536,67 @@ function BaseWindow:CreateTab(tabName, iconId)
     containerLayout.SortOrder     = Enum.SortOrder.LayoutOrder
     containerLayout.Padding       = UDim.new(0,10)
 
-    -- Left column
+    -- 7) Left column
     local LeftColumn = Instance.new("ScrollingFrame")
     LeftColumn.Name = "LeftColumn"
     LeftColumn.Size = UDim2.new(0.5, -5, 1, 0)
-    LeftColumn.BorderSizePixel = 0
-    LeftColumn.ScrollBarThickness = 5
     LeftColumn.BackgroundTransparency = 1
+    LeftColumn.BorderSizePixel        = 0
+    LeftColumn.ScrollBarThickness     = 5
     LeftColumn.Parent = Container
 
     local leftLayout = Instance.new("UIListLayout", LeftColumn)
     leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
     leftLayout.Padding   = UDim.new(0,8)
-    local leftPad = Instance.new("UIPadding", LeftColumn)
-    leftPad.PaddingLeft  = UDim.new(0,8)
-    leftPad.PaddingTop   = UDim.new(0,8)
 
-    -- Right column
+    local leftPad = Instance.new("UIPadding", LeftColumn)
+    leftPad.PaddingTop  = UDim.new(0,8)
+    leftPad.PaddingLeft = UDim.new(0,8)
+
+    -- 8) Right column
     local RightColumn = Instance.new("ScrollingFrame")
     RightColumn.Name = "RightColumn"
     RightColumn.Size = UDim2.new(0.5, -5, 1, 0)
-    RightColumn.BorderSizePixel = 0
-    RightColumn.ScrollBarThickness = 5
     RightColumn.BackgroundTransparency = 1
+    RightColumn.BorderSizePixel        = 0
+    RightColumn.ScrollBarThickness     = 5
     RightColumn.Parent = Container
 
     local rightLayout = Instance.new("UIListLayout", RightColumn)
     rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
     rightLayout.Padding   = UDim.new(0,8)
-    local rightPad = Instance.new("UIPadding", RightColumn)
-    rightPad.PaddingLeft  = UDim.new(0,8)
-    rightPad.PaddingTop   = UDim.new(0,8)
 
-    -- Show/hide tab logic
+    local rightPad = Instance.new("UIPadding", RightColumn)
+    rightPad.PaddingTop  = UDim.new(0,8)
+    rightPad.PaddingLeft = UDim.new(0,8)
+
+    -- 9) Tab button click logic: show this page, hide others, highlight this tab
     local function ShowTab()
-        for _, child in ipairs(pages:GetChildren()) do
-            if child:IsA("Frame") then
-                child.Visible = false
+        -- Hide all sibling pages
+        for _, siblingPage in ipairs(self.PagesFolder:GetChildren()) do
+            if siblingPage:IsA("Frame") then
+                siblingPage.Visible = false
             end
         end
+        -- Show our page
         Page.Visible = true
 
-        for _, btn in ipairs(sidebar:GetChildren()) do
+        -- Reset other tab buttons’ background
+        for _, btn in ipairs(self.Sidebar:GetChildren()) do
             if btn:IsA("TextButton") and btn ~= TabButton then
-                Tween(btn, {BackgroundColor3 = theme.Sidebar}, 0.3)
+                btn.BackgroundColor3 = theme.Sidebar
             end
         end
-        Tween(TabButton, {BackgroundColor3 = theme.AccentRed}, 0.3)
+        -- Highlight this one
+        TabButton.BackgroundColor3 = theme.AccentRed
     end
 
     TabButton.MouseButton1Click:Connect(ShowTab)
 
-    -- If this is the first tab, auto-show it
+    -- 10) If this is the first tab we’ve created, auto-display it
     local foundActive = false
-    for _, p in ipairs(pages:GetChildren()) do
-        if p.Visible then
+    for _, child in ipairs(self.PagesFolder:GetChildren()) do
+        if child:IsA("Frame") and child.Visible then
             foundActive = true
             break
         end
@@ -585,7 +606,7 @@ function BaseWindow:CreateTab(tabName, iconId)
         TabButton.BackgroundColor3 = theme.AccentRed
     end
 
-    -- Return an object to create sections in left or right columns
+    -- 11) Return a table for creating sections in left/right columns
     local TabObj = {}
     TabObj.Name        = tabName
     TabObj.Page        = Page
@@ -593,10 +614,10 @@ function BaseWindow:CreateTab(tabName, iconId)
     TabObj.RightColumn = RightColumn
     TabObj.Container   = Container
 
-    -- We'll define a function on TabObj to create sections
-    function TabObj:CreateSection(column, title)
+    -- A helper to create sections
+    function TabObj:CreateSection(columnSide, title)
         local colFrame
-        if column:lower() == "left" then
+        if (columnSide:lower() == "left") then
             colFrame = LeftColumn
         else
             colFrame = RightColumn
@@ -607,7 +628,7 @@ function BaseWindow:CreateTab(tabName, iconId)
         Section.BackgroundColor3 = theme.ElementBackground
         Section.BorderSizePixel  = 0
         Section.Size = UDim2.new(1, -16, 0, 40)
-        Section.AutomaticSize = Enum.AutomaticSize.Y
+        Section.AutomaticSize    = Enum.AutomaticSize.Y
         Section.Parent = colFrame
 
         local scorner = Instance.new("UICorner", Section)
@@ -641,31 +662,20 @@ function BaseWindow:CreateTab(tabName, iconId)
         local SectionObj = {}
         SectionObj.Frame = Section
 
-        -- Attach methods for creating elements in this section:
-        function SectionObj:CreateToggle(data)
-            return NihubUI.Elements.CreateToggle(Section, data)
-        end
-        function SectionObj:CreateSlider(data)
-            return NihubUI.Elements.CreateSlider(Section, data)
-        end
-        function SectionObj:CreateTextBox(data)
-            return NihubUI.Elements.CreateTextBox(Section, data)
-        end
-        function SectionObj:CreateDropdown(data)
-            return NihubUI.Elements.CreateDropdown(Section, data)
-        end
-        function SectionObj:CreateColorPicker(data)
-            return NihubUI.Elements.CreateColorPicker(Section, data)
-        end
-        function SectionObj:CreateKeybind(data)
-            return NihubUI.Elements.CreateKeybind(Section, data)
-        end
+        -- Attach methods for element creation, e.g.:
+        SectionObj.CreateToggle      = function(_, data) return NihubUI.Elements.CreateToggle(Section, data) end
+        SectionObj.CreateSlider      = function(_, data) return NihubUI.Elements.CreateSlider(Section, data) end
+        SectionObj.CreateTextBox     = function(_, data) return NihubUI.Elements.CreateTextBox(Section, data) end
+        SectionObj.CreateDropdown    = function(_, data) return NihubUI.Elements.CreateDropdown(Section, data) end
+        SectionObj.CreateColorPicker = function(_, data) return NihubUI.Elements.CreateColorPicker(Section, data) end
+        SectionObj.CreateKeybind     = function(_, data) return NihubUI.Elements.CreateKeybind(Section, data) end
 
         return SectionObj
     end
 
     return TabObj
 end
+
 
 ----------------------------------------------------------------------------------------------------
 -- LINE 14
