@@ -287,20 +287,20 @@ function BaseWindow.new(options)
     cstroke.Color=self.Theme.StrokeColor
     cstroke.Transparency=0.6
 
-    -- Adjusted UIPadding to move content lower due to search bar repositioning
+    -- We'll add some top padding so that the search bar sits up top
     local ContentPad=Instance.new("UIPadding")
     ContentPad.Name="ContentPadding"
-    ContentPad.PaddingTop=UDim2.new(0,40)  -- Decreased top padding to accommodate search bar
-    ContentPad.PaddingLeft=UDim2.new(0,10)
-    ContentPad.PaddingRight=UDim2.new(0,10)
-    ContentPad.PaddingBottom=UDim2.new(0,10)
+    ContentPad.PaddingTop=UDim.new(0,50)  -- push real content 50px down
+    ContentPad.PaddingLeft=UDim.new(0,10)
+    ContentPad.PaddingRight=UDim.new(0,10)
+    ContentPad.PaddingBottom=UDim.new(0,10)
     ContentPad.Parent=ContentFrame
 
     local PagesFolder=Instance.new("Folder")
     PagesFolder.Name="PagesFolder"
     PagesFolder.Parent=ContentFrame
 
-  -- search bar top-right
+    -- search bar near top-right
     local SearchBar=Instance.new("TextBox")
     SearchBar.Name="SearchBar"
     SearchBar.PlaceholderText="Search UI..."
@@ -310,11 +310,10 @@ function BaseWindow.new(options)
     SearchBar.BackgroundColor3=self.Theme.ElementBackground
     SearchBar.Size=UDim2.new(0,180,0,28)
     SearchBar.AnchorPoint=Vector2.new(1,0)
-    SearchBar.Position=UDim2.new(1,-10,0,10)
+    SearchBar.Position=UDim2.new(1,-10,0,10)  -- pinned top-right, 10px from top
     SearchBar.ClearTextOnFocus=false
     SearchBar.Text=""
     SearchBar.Parent=ContentFrame
-
 
     local sbCorner=Instance.new("UICorner",SearchBar)
     sbCorner.CornerRadius=UDim.new(0,8)
