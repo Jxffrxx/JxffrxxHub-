@@ -429,7 +429,18 @@ end
 
 function NihubUI:CreateWindow(opts)
     local window = BaseWindow.new(opts)
-    setmetatable(window, {__index = self})
+    -- We combine both sets of methods:
+    local combinedMetatable = {
+        __index = function(tbl, key)
+            -- 1) Check `BaseWindow` for methods (like CreateTab)
+            if BaseWindow[key] ~= nil then
+                return BaseWindow[key]
+            end
+            -- 2) Otherwise, fall back to `NihubUI`
+            return self[key]
+        end
+    }
+    setmetatable(window, combinedMetatable)
     return window
 end
 
