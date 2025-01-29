@@ -310,7 +310,7 @@ function BaseWindow.new(options)
     SearchBar.BackgroundColor3=self.Theme.ElementBackground
     SearchBar.Size=UDim2.new(0,180,0,28)
     SearchBar.AnchorPoint=Vector2.new(1,0)
-    SearchBar.Position=UDim2.new(1,-10,0,10)  -- pinned top-right, 10px from top
+    SearchBar.Position=UDim2.new(1,-3,0,10)  -- pinned top-right, 10px from top
     SearchBar.ClearTextOnFocus=false
     SearchBar.Text=""
     SearchBar.Parent=ContentFrame
