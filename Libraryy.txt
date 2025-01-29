@@ -534,7 +534,7 @@ function BaseWindow:CreateTab(tabName, iconId)
     leftLayout.Padding   = UDim.new(0,8)
     local leftPad = Instance.new("UIPadding", LeftColumn)
     leftPad.PaddingTop  = UDim.new(0,8)
-    leftPad.PaddingLeft = UDim2.new(0,8,0,0)
+    leftPad.PaddingLeft = UDim.new(0,8)
 
     local RightColumn = Instance.new("ScrollingFrame")
     RightColumn.Name = "RightColumn"
