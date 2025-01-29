@@ -290,17 +290,17 @@ function BaseWindow.new(options)
     -- Adjusted UIPadding to move content lower due to search bar repositioning
     local ContentPad=Instance.new("UIPadding")
     ContentPad.Name="ContentPadding"
-    ContentPad.PaddingTop=UDim.new(0,70)  -- Increased top padding to move content further down
-    ContentPad.PaddingLeft=UDim.new(0,10)
-    ContentPad.PaddingRight=UDim.new(0,10)
-    ContentPad.PaddingBottom=UDim.new(0,10)
+    ContentPad.PaddingTop=UDim2.new(0,40)  -- Decreased top padding to accommodate search bar
+    ContentPad.PaddingLeft=UDim2.new(0,10)
+    ContentPad.PaddingRight=UDim2.new(0,10)
+    ContentPad.PaddingBottom=UDim2.new(0,10)
     ContentPad.Parent=ContentFrame
 
     local PagesFolder=Instance.new("Folder")
     PagesFolder.Name="PagesFolder"
     PagesFolder.Parent=ContentFrame
 
-    -- search bar near top-right, moved further up
+   -- search bar near top-right, moved further up
     local SearchBar=Instance.new("TextBox")
     SearchBar.Name="SearchBar"
     SearchBar.PlaceholderText="Search UI..."
@@ -314,6 +314,7 @@ function BaseWindow.new(options)
     SearchBar.ClearTextOnFocus=false
     SearchBar.Text=""
     SearchBar.Parent=ContentFrame
+
 
     local sbCorner=Instance.new("UICorner",SearchBar)
     sbCorner.CornerRadius=UDim.new(0,8)
