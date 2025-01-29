@@ -1065,9 +1065,10 @@ end
 -- 5) Color Picker
 --------------------------------------------------------------------------------
 
+-- Full HSV-based color picker for advanced usage
+
+-- colorPicker window function
 local function createColorPickerWindow(theme: table, startColor: Color3, callback: (Color3)->())
-    -- same as before; left unmodified for brevity
-    -- (If you want heavier corners inside the color-picker UI too, you can do so here.)
     local Screen = Instance.new("Frame")
     Screen.Name = "FullColorPickerScreen"
     Screen.Size = UDim2.new(0,300,0,220)
@@ -1082,9 +1083,169 @@ local function createColorPickerWindow(theme: table, startColor: Color3, callbac
     sstroke.Thickness = 1
     sstroke.Transparency = 0.5
 
-    -- etc. (unchanged) ...
-    -- omitted for space
-    -- code calls callback(Color3) on changes
+    local HueBar = Instance.new("Frame")
+    HueBar.Name = "HueBar"
+    HueBar.Size = UDim2.new(0,20,1,-40)
+    HueBar.Position = UDim2.new(1,-30,0,10)
+    HueBar.BackgroundColor3 = Color3.fromRGB(255,0,0)
+    HueBar.BorderSizePixel  = 0
+    HueBar.Parent = Screen
+
+    local barGrad = Instance.new("UIGradient", HueBar)
+    barGrad.Rotation = 90
+    barGrad.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0,   Color3.fromRGB(255,0,0)),
+        ColorSequenceKeypoint.new(0.17,Color3.fromRGB(255,255,0)),
+        ColorSequenceKeypoint.new(0.34,Color3.fromRGB(0,255,0)),
+        ColorSequenceKeypoint.new(0.51,Color3.fromRGB(0,255,255)),
+        ColorSequenceKeypoint.new(0.68,Color3.fromRGB(0,0,255)),
+        ColorSequenceKeypoint.new(0.85,Color3.fromRGB(255,0,255)),
+        ColorSequenceKeypoint.new(1,   Color3.fromRGB(255,0,0))
+    }
+
+    local SVSquare = Instance.new("Frame")
+    SVSquare.Name = "SVSquare"
+    SVSquare.Size = UDim2.new(0,180,0,180)
+    SVSquare.Position = UDim2.new(0,10,0,10)
+    SVSquare.BackgroundColor3 = Color3.fromHSV(0,1,1)
+    SVSquare.BorderSizePixel  = 0
+    SVSquare.Parent = Screen
+
+    local sqGrad = Instance.new("UIGradient", SVSquare)
+    sqGrad.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
+    }
+    sqGrad.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0),
+        NumberSequenceKeypoint.new(1,1)
+    }
+
+    local blackGrad = Instance.new("ImageLabel", SVSquare)
+    blackGrad.Name = "BlackGradient"
+    blackGrad.BackgroundTransparency = 1
+    blackGrad.Size = UDim2.new(1,0,1,0)
+    blackGrad.Image = "rbxassetid://4155801252"
+    blackGrad.ImageColor3 = Color3.fromRGB(0,0,0)
+    blackGrad.ImageTransparency = 0
+    blackGrad.ZIndex = 2
+
+    local ConfirmBtn = Instance.new("TextButton")
+    ConfirmBtn.Name = "Confirm"
+    ConfirmBtn.Size = UDim2.new(0,80,0,25)
+    ConfirmBtn.Position = UDim2.new(0.5,-40,1,-30)
+    ConfirmBtn.BackgroundColor3 = theme.ElementHover
+    ConfirmBtn.Text = "Confirm"
+    ConfirmBtn.Font = theme.Font
+    ConfirmBtn.TextSize = 14
+    ConfirmBtn.TextColor3 = theme.TextColor
+    ConfirmBtn.Parent = Screen
+
+    local ccorner = Instance.new("UICorner", ConfirmBtn)
+    ccorner.CornerRadius = UDim.new(0,6)
+    local cstroke = Instance.new("UIStroke", ConfirmBtn)
+    cstroke.Color = theme.StrokeColor
+    cstroke.Thickness = 1
+    cstroke.Transparency = 0.5
+
+    local hueSelector = Instance.new("Frame")
+    hueSelector.Name = "HueSelector"
+    hueSelector.Size = UDim2.new(1,0,0,2)
+    hueSelector.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    hueSelector.BorderSizePixel = 0
+    hueSelector.Parent = HueBar
+
+    local circle = Instance.new("UICorner", hueSelector)
+    circle.CornerRadius = UDim.new(0,0)
+
+    local svSelector = Instance.new("Frame")
+    svSelector.Name = "SVSelector"
+    svSelector.Size = UDim2.new(0,6,0,6)
+    svSelector.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    svSelector.BorderSizePixel = 0
+    svSelector.ZIndex = 3
+    svSelector.Parent = SVSquare
+    local svcorn = Instance.new("UICorner", svSelector)
+    svcorn.CornerRadius = UDim.new(1,0)
+
+    local h = 0
+    local s = 1
+    local v = 1
+
+    local function updateColor()
+        local c3 = Color3.fromHSV(h,s,v)
+        if callback then
+            callback(c3)
+        end
+    end
+
+    local function setHue(yPos: number)
+        local barAbsPos  = HueBar.AbsolutePosition.Y
+        local barAbsSize = HueBar.AbsoluteSize.Y
+        local offset = math.clamp(yPos - barAbsPos, 0, barAbsSize)
+        hueSelector.Position = UDim2.new(0,0,0, offset-1)
+        h = 1 - (offset/barAbsSize)
+        SVSquare.BackgroundColor3 = Color3.fromHSV(h,1,1)
+        updateColor()
+    end
+
+    local function setSV(xPos: number, yPos: number)
+        local sqAbsPos  = SVSquare.AbsolutePosition
+        local sqAbsSize = SVSquare.AbsoluteSize
+        local rx = math.clamp(xPos - sqAbsPos.X, 0, sqAbsSize.X)
+        local ry = math.clamp(yPos - sqAbsPos.Y, 0, sqAbsSize.Y)
+        svSelector.Position = UDim2.new(0, rx-3, 0, ry-3)
+        s = rx / sqAbsSize.X
+        v = 1 - (ry / sqAbsSize.Y)
+        updateColor()
+    end
+
+    HueBar.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+            setHue(i.Position.Y)
+        end
+    end)
+    HueBar.InputChanged:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseMovement and i.UserInputState==Enum.UserInputState.Change then
+            if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                setHue(i.Position.Y)
+            end
+        end
+    end)
+
+    SVSquare.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+            setSV(i.Position.X, i.Position.Y)
+        end
+    end)
+    SVSquare.InputChanged:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseMovement and i.UserInputState==Enum.UserInputState.Change then
+            if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                setSV(i.Position.X, i.Position.Y)
+            end
+        end
+    end)
+
+    ConfirmBtn.MouseButton1Click:Connect(function()
+        Screen.Visible = false
+    end)
+
+    -- Initialize from startColor
+    do
+        local r,g,b = startColor.R, startColor.G, startColor.B
+        local hh, ss, vv = Color3.toHSV(Color3.new(r,g,b))
+        h,s,v = hh, ss, vv
+        SVSquare.BackgroundColor3 = Color3.fromHSV(h,1,1)
+        local barSize = 200
+        local offset = (1-h)*barSize
+        hueSelector.Position = UDim2.new(0,0,0, offset)
+
+        local sqSize = Vector2.new(180,180)
+        local rx = s* sqSize.X
+        local ry = (1-v)* sqSize.Y
+        svSelector.Position = UDim2.new(0, rx-3, 0, ry-3)
+        updateColor()
+    end
 
     return Screen
 end
@@ -1100,7 +1261,7 @@ function NihubUI.Elements.CreateColorPicker(parent: Instance, info: table)
     CPFrame.Parent = parent
 
     local corner = Instance.new("UICorner", CPFrame)
-    corner.CornerRadius = UDim.new(0,8)
+    corner.CornerRadius = UDim.new(0,6)
     local stroke = Instance.new("UIStroke", CPFrame)
     stroke.Color = theme.StrokeColor
     stroke.Thickness = 1
@@ -1171,12 +1332,7 @@ function NihubUI.Elements.CreateColorPicker(parent: Instance, info: table)
             SetColor(c3)
         end)
         colorPicker.Parent = parent
-        colorPicker.Position = UDim2.new(
-            0,
-            CPFrame.AbsolutePosition.X + CPFrame.AbsoluteSize.X + 10,
-            0,
-            CPFrame.AbsolutePosition.Y
-        )
+        colorPicker.Position = UDim2.new(0, CPFrame.AbsolutePosition.X + CPFrame.AbsoluteSize.X + 10, 0, CPFrame.AbsolutePosition.Y)
     end)
 
     local CPObj = {}
